@@ -213,7 +213,6 @@ class RwShap():
 
             sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
 
-
             return sh_df
 
 
