@@ -3,6 +3,10 @@ import pandas as pd
 import plotly.express as px
 
 
+def test_change():
+    return "My change"
+
+
 def prep(df, channel_col, client_id_col, interaction_type_col, full_data = True, click_only = False, view_only = False, sort = True):
 
     """Function that does initial data preprocessing"""
