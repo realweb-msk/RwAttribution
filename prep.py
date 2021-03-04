@@ -1,11 +1,15 @@
-import numpy as np
 import pandas as pd
-import plotly.express as px
+import numpy as np
 
 
-def prep(df, channel_col, client_id_col, interaction_type_col, full_data = True, click_only = False, view_only = False, sort = True):
+def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = True, click_only = False,
+              view_only = False, sort = True, verbose=0):
 
-    """Function that does initial data preprocessing"""
+    """
+    Function that does initial data preprocessing
+
+    Returns: tuple
+    """
 
     df["channel_new"] = df[channel_col] + '_'
     # Собираем цепчки вместе
@@ -28,6 +32,9 @@ def prep(df, channel_col, client_id_col, interaction_type_col, full_data = True,
             .rename(columns = {'channel_new' : 'path'})
            )
 
+    if verbose > 0:
+        print("1-st step is done")
+
     # Преобразует массив в строку через разделитель
     def conc(a, sep = '_'):
         res = ''
@@ -40,8 +47,11 @@ def prep(df, channel_col, client_id_col, interaction_type_col, full_data = True,
     # Отсортируем каналы в цепочке по алфавиту и сгруппируем по цепочкам
     def sort_and_group(df, sort):
         df['path'] = df['path'].apply(lambda x: x[:-1])
-        df_gr = df.groupby('path', as_index = False).agg({'clientId' : 'nunique'})
-
+        df_gr = (df
+                 .groupby('path', as_index = False)
+                 .agg({client_id_col : 'nunique'})
+                 .rename(columns={client_id_col : 'conversion'})
+                 )
         if sort:
             df_gr['path'] = df_gr['path'].apply(lambda x: sorted(x.split('_')))
             df_gr['path_len'] = df_gr['path'].apply(lambda x: len(x))
