@@ -109,7 +109,6 @@ class RwShap():
 
         # В наших цепочках каналы могут повторяться
         if with_repetitions:
-
             # Максимальная длина цепочки должна быть < число каналов
             if len(channels) <= max_path_len:
                 return "Maximum path length can't be larger than unique channels amnt"
@@ -129,7 +128,7 @@ class RwShap():
 
             for channel in channels:
                 for A in v_values.keys():
-                    #print(A)
+                    # print(A)
 
                     if channel not in A.split("_"):
                         #print(channel)
@@ -139,15 +138,17 @@ class RwShap():
 
                         if cardinal_A < max_path_len:
                             A_with_channel.append(channel)
-                        #print(A_with_channel)
+                        # print(A_with_channel)
 
-                        #A_with_channel = "_".join(sorted(A_with_channel))
-                        #print(A_with_channel)
+                        # A_with_channel = "_".join(sorted(A_with_channel))
+                        # print(A_with_channel)
                         A_with_channel = "_".join(A_with_channel)
 
                         # Weight = |S|!(n-|S|-1)!/n!
                         weight = (np.math.factorial(cardinal_A) *
                                   np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
+
+                        # print(weight)
 
                         # Marginal contribution = v(S U {i})-v(S)
                         contrib = (v_values[A_with_channel] - v_values[A])
