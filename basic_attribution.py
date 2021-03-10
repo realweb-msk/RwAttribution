@@ -57,6 +57,8 @@ def last_non_direct_click(df):
 
     plt_data = res.groupby('channel_grouping', as_index = False).agg({'clientId' : 'nunique'})
 
+    plt_data['clientId'] = plt_data['clientId'] / plt_data['clientId'].sum()
+
     fig = px.bar(plt_data, y = 'channel_grouping', x = 'clientId', title = 'Last non-direct click Model', orientation = 'h')
     fig.update_xaxes(title_text = 'Доля среди общей части конверсий')
     fig.update_yaxes(title_text = 'Канал')
