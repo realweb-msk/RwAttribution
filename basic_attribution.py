@@ -22,7 +22,7 @@ def last_click(df, path_col='path', conv_col='conversion', plot=True):
 
     if plot:
         fig = px.bar(plt_data, y = 'first', x = conv_col, title = 'Last Click Model', orientation = 'h')
-        fig.update_xaxes(title_text = 'Доля среди общей части конверсий')
+        fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Канал')
         fig.show()
 
@@ -60,7 +60,7 @@ def last_non_direct_click(df):
     plt_data['clientId'] = plt_data['clientId'] / plt_data['clientId'].sum()
 
     fig = px.bar(plt_data, y = 'channel_grouping', x = 'clientId', title = 'Last non-direct click Model', orientation = 'h')
-    fig.update_xaxes(title_text = 'Доля среди общей части конверсий')
+    fig.update_xaxes(title_text = 'Доля от всех конверсий')
     fig.update_yaxes(title_text = 'Канал')
     fig.show()
 
@@ -89,7 +89,7 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
 
     if plot:
         fig = px.bar(plt_data, y = 'first', x = conv_col, title = 'First click model', orientation = 'h')
-        fig.update_xaxes(title_text = 'Доля среди общей части конверсий')
+        fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Канал')
         fig.show()
 
@@ -121,7 +121,7 @@ def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=
 
     if plot:
         fig = px.bar(y = d_.keys(), x = d_.values(), title = 'Uniform model', orientation = 'h')
-        fig.update_xaxes(title_text = 'Доля среди общей части конверсий')
+        fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Канал')
         fig.show()
 
