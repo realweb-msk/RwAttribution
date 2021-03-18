@@ -3,7 +3,6 @@ import pandas as pd
 
 
 # Учитываем частоту как FIC
-# TODO: Rewrite for general case of dataset
 def freq(df, int_type_col, col_to_group, order_col, id_col, click_weight = 1, view_weight = 3):
 
     """
@@ -40,12 +39,12 @@ def freq(df, int_type_col, col_to_group, order_col, id_col, click_weight = 1, vi
 
 
 # Combine Shapley and FIC
-def shap_and_freq(sh_clicks, sh_views, df_for_freq, int_type_col, channel_col, col_to_group):
+def shap_and_freq(sh_clicks, sh_views, df_for_freq, int_type_col, channel_col, col_to_group, order_col, id_col):
 
     data = df_for_freq
 
 
-    freq_c, freq_i = freq(data, int_type_col, col_to_group)
+    freq_c, freq_i = freq(data, int_type_col, col_to_group, order_col, id_col)
 
     click = sh_clicks.merge(freq_c, left_on = channel_col, right_on = channel_col)
     view = sh_views.merge(freq_i, left_on = channel_col, right_on = channel_col)
