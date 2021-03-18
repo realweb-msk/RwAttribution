@@ -18,10 +18,11 @@ def last_click(df, path_col='path', conv_col='conversion', plot=True):
     df_['first'] = df_[path_col].apply(lambda x: x.split('^')[-1])
 
     plt_data = df_.groupby('first', as_index = False).agg({conv_col : 'sum'})
-    plt_data[conv_col] = plt_data[conv_col] / plt_data[conv_col].sum()
+    plt_data[conv_col+'_rel'] = plt_data[conv_col] / plt_data[conv_col].sum()
+
 
     if plot:
-        fig = px.bar(plt_data, y = 'first', x = conv_col, title = 'Last Click Model', orientation = 'h')
+        fig = px.bar(plt_data, y = 'first', x = conv_col+'_rel', title = 'Last Click Model', orientation = 'h')
         fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Группа каналов')
         fig.show()
@@ -84,11 +85,11 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
     df_['first'] = df_[path_col].apply(lambda x: x.split('^')[0])
 
     plt_data = df_.groupby('first', as_index = False).agg({conv_col : 'sum'})
-    plt_data[conv_col] = plt_data[conv_col] / plt_data[conv_col].sum()
+    plt_data[conv_col+'_rel'] = plt_data[conv_col] / plt_data[conv_col].sum()
 
 
     if plot:
-        fig = px.bar(plt_data, y = 'first', x = conv_col, title = 'First click model', orientation = 'h')
+        fig = px.bar(plt_data, y = 'first', x = conv_col+'_rel', title = 'First click model', orientation = 'h')
         fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Группа каналов')
         fig.show()
