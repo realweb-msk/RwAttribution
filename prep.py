@@ -53,7 +53,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = 
                  .rename(columns={client_id_col : 'conversion'})
                  )
         if sort:
-            df_gr['path'] = df_gr['path'].apply(lambda x: sorted(x.split('_')))
+            df_gr['path'] = df_gr['path'].apply(lambda x: sorted(x.split('^')))
             df_gr['path_len'] = df_gr['path'].apply(lambda x: len(x))
             df_gr['path'] = df_gr['path'].apply(lambda x: conc(x))
 
