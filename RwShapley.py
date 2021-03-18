@@ -4,7 +4,7 @@ import pandas as pd
 
 # Учитываем частоту как FIC
 # TODO: Rewrite for general case of dataset
-def freq(df, int_type_col, col_to_group, click_weight = 1, view_weight = 3):
+def freq(df, int_type_col, col_to_group, order_col, id_col, click_weight = 1, view_weight = 3):
 
     """
     Computes frequency impact coefficient (FIC)
@@ -18,21 +18,21 @@ def freq(df, int_type_col, col_to_group, click_weight = 1, view_weight = 3):
     """
 
     # clicks
-    c = df[df[int_type_col] == "click"]
+    c = df[df[int_type_col] == "Click"]
     c = (c
          .groupby(col_to_group, as_index = False)
-         .agg({'time' : 'count', 'clientId' : 'nunique'})
-         .rename(columns = {'time' : 'total_occ', 'clientId': 'uniq_path'})
+         .agg({order_col : 'count', id_col : 'nunique'})
+         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
         )
     c['FIC'] = c['uniq_path'] / c['total_occ']
 
 
     # impressions
-    i = df[df[int_type_col] == "view"]
+    i = df[df[int_type_col] == "Impression"]
     i = (i
          .groupby(col_to_group, as_index = False)
-         .agg({'time' : 'count', 'clientId' : 'nunique'})
-         .rename(columns = {'time' : 'total_occ', 'clientId': 'uniq_path'})
+         .agg({order_col : 'count', id_col : 'nunique'})
+         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
         )
     i['FIC'] = i['uniq_path'] / i['total_occ']
 
