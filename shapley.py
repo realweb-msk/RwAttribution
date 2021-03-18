@@ -51,9 +51,9 @@ class RwShap():
                 sub_channels.extend(map(list, combinations(s, i)))
 
         if with_repetitions:
-            return list(map("_".join, sub_channels))
+            return list(map("^".join, sub_channels))
 
-        return list(map("_".join, map(sorted, sub_channels)))
+        return list(map("^".join, map(sorted, sub_channels)))
 
 
 
@@ -98,7 +98,7 @@ class RwShap():
         c_values = df.set_index(self.channel_col_name).to_dict()[self.conv_col_name]
 
         if channels is None:
-            df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split("_")) == 1 else np.nan)
+            df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split("^")) == 1 else np.nan)
             channels = list(df['channels'].dropna().unique())
 
         else:
@@ -130,19 +130,19 @@ class RwShap():
                 for A in v_values.keys():
                     # print(A)
 
-                    if channel not in A.split("_"):
+                    if channel not in A.split("^"):
                         #print(channel)
 
-                        cardinal_A = len(A.split("_"))
-                        A_with_channel = A.split("_")
+                        cardinal_A = len(A.split("^"))
+                        A_with_channel = A.split("^")
 
                         if cardinal_A < max_path_len:
                             A_with_channel.append(channel)
                         # print(A_with_channel)
 
-                        # A_with_channel = "_".join(sorted(A_with_channel))
+                        # A_with_channel = ^".join(sorted(A_with_channel))
                         # print(A_with_channel)
-                        A_with_channel = "_".join(A_with_channel)
+                        A_with_channel = "^".join(A_with_channel)
 
                         # Weight = |S|!(n-|S|-1)!/n!
                         weight = (np.math.factorial(cardinal_A) *
@@ -160,7 +160,8 @@ class RwShap():
             sh_df = (
                 pd.DataFrame(data = shapley_values.values(), index = shapley_values.keys())
                 .reset_index()
-                .rename(columns = {'index' : 'channel_grouping', 0 : 'weight'})
+                # TODO : change index : 'channel_group' to smth general
+                .rename(columns = {'index' : 'channel_group', 0 : 'weight'})
                     )
             sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
 
@@ -186,12 +187,12 @@ class RwShap():
                 for A in v_values.keys():
                     #print(A)
 
-                    if channel not in A.split("_"):
+                    if channel not in A.split("^"):
                         #print(channel)
 
-                        cardinal_A = len(A.split("_"))
-                        A_with_channel = A.split("_")
-                        A_with_channel = "_".join(sorted(A_with_channel))
+                        cardinal_A = len(A.split("^"))
+                        A_with_channel = A.split("^")
+                        A_with_channel = "^".join(sorted(A_with_channel))
                         #print(A_with_channel)
 
                         # Weight = |S|!(n-|S|-1)!/n!
@@ -208,7 +209,8 @@ class RwShap():
             sh_df = (
                 pd.DataFrame(data = shapley_values.values(), index = shapley_values.keys())
                 .reset_index()
-                .rename(columns = {'index' : 'channel_grouping', 0 : 'weight'})
+                # TODO : change index : 'channel_group' to smth general
+                .rename(columns = {'index' : 'channel_group', 0 : 'weight'})
                     )
 
             sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()

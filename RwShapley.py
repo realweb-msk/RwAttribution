@@ -46,6 +46,8 @@ def shap_and_freq(sh_clicks, sh_views, df_for_freq, int_type_col, channel_col, c
 
     freq_c, freq_i = freq(data, int_type_col, col_to_group, order_col, id_col)
 
+    print(sh_clicks)
+
     click = sh_clicks.merge(freq_c, left_on = channel_col, right_on = channel_col)
     view = sh_views.merge(freq_i, left_on = channel_col, right_on = channel_col)
 
