@@ -21,13 +21,13 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = 
 
 
     click = (df
-             .query(f'{interaction_type_col} == "click"')
+             .query(f'{interaction_type_col} == "Click"')
              .groupby(client_id_col, as_index = False).agg({'channel_new' : 'sum'})
              .rename(columns = {'channel_new' : 'path'})
             )
 
     view = (df
-            .query(f'{interaction_type_col} == "view"')
+            .query(f'{interaction_type_col} == "Impression"')
             .groupby(client_id_col, as_index = False).agg({'channel_new' : 'sum'})
             .rename(columns = {'channel_new' : 'path'})
            )

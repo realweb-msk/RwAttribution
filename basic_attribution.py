@@ -95,7 +95,6 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
 
     return plt_data
 
-
 def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=True):
     """
     Preforms last-click attribution model
