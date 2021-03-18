@@ -115,7 +115,7 @@ def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=
         df_[channel] = df_[path_col].apply(lambda x: channel in x)
 #         df_[channel + '_len'] =
 
-        d[channel] = df_[df_[channel] == True][conv_col].count()
+        d[channel] = df_[df_[channel] == True][conv_col].sum()
 
     d_ = {k : v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
 
