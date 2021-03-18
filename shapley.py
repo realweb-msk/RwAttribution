@@ -117,7 +117,7 @@ class RwShap():
 
             for A in self.comb_full(channels, max_path_len):
                 #print(A)
-                v_values['_'.join(A)] = self.impact(A, c_values, with_repetitions)
+                v_values['^'.join(A)] = self.impact(A, c_values, with_repetitions)
 
 
             #print(v_values)
@@ -174,7 +174,7 @@ class RwShap():
 
             for A in self.comb(channels):
                 #print(A)
-                v_values['_'.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
+                v_values['^'.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
 
 
 

@@ -15,7 +15,7 @@ def last_click(df, path_col='path', conv_col='conversion', plot=True):
     - dictionary with channels an their attribution score (not-normalized)
     """
     df_ = df.copy()
-    df_['first'] = df_[path_col].apply(lambda x: x.split('_')[-1])
+    df_['first'] = df_[path_col].apply(lambda x: x.split('^')[-1])
 
     plt_data = df_.groupby('first', as_index = False).agg({conv_col : 'sum'})
     plt_data[conv_col] = plt_data[conv_col] / plt_data[conv_col].sum()
@@ -81,7 +81,7 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
     """
 
     df_ = df.copy()
-    df_['first'] = df_[path_col].apply(lambda x: x.split('_')[0])
+    df_['first'] = df_[path_col].apply(lambda x: x.split('^')[0])
 
     plt_data = df_.groupby('first', as_index = False).agg({conv_col : 'sum'})
     plt_data[conv_col] = plt_data[conv_col] / plt_data[conv_col].sum()

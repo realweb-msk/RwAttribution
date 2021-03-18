@@ -11,7 +11,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = 
     Returns: tuple
     """
 
-    df["channel_new"] = df[channel_col] + '_'
+    df["channel_new"] = df[channel_col] + '^'
     # Собираем цепчки вместе
     if full_data:
         full = (df
@@ -36,7 +36,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = 
         print("1-st step is done")
 
     # Преобразует массив в строку через разделитель
-    def conc(a, sep = '_'):
+    def conc(a, sep = '^'):
         res = ''
         for i in a:
             res += i + sep
