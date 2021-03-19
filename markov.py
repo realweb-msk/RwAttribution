@@ -182,6 +182,8 @@ class RwMarkov():
 
     def make_markov(self, total_conversions, base_cr):
 
+        """Final func to make markov-chain attribution model"""
+
         # Обработанные данные
         df_prep = self.markov_prep()
         # Все переходы
@@ -194,9 +196,8 @@ class RwMarkov():
         removal = self.removal_effect(matrix, base_cr)
 
 
-        """Final func to make markov-chain attribution model"""
 
-        removal_sum = np.sum(list(removal.values()))
+        removal_sum = sum(removal.values())
 
         return {k: (v / removal_sum) * total_conversions for k, v in removal.items()}
 
