@@ -12,7 +12,7 @@ def last_click(df, path_col='path', conv_col='conversion', plot=True):
     - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
 
     :returns
-    - dictionary with channels an their attribution score (not-normalized)
+    - pandas.DataFrame with channels an their attribution score (not-normalized)
     """
     df_ = df.copy()
     df_['first'] = df_[path_col].apply(lambda x: x.split('^')[-1])
@@ -78,7 +78,7 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
     - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
 
     :returns
-    - dictionary with channels an their attribution score (not-normalized)
+    - pandas.DataFrame with channels an their attribution score (not-normalized)
     """
 
     df_ = df.copy()
@@ -126,3 +126,74 @@ def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=
         fig.show()
 
     return d
+
+def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_col='conversion',
+               plot=True, recent=True):
+    """
+    Preforms time decay attribution model
+    when recent = True then more recent channel is more valuable
+    when recent = False then less recent channel is more valuable
+
+    :param
+    - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    - unique_channels (iterable) : list(or other iterable) of channels in paths
+    - path_col (str, default = 'path') : name of column with path data
+    - conv_col (str, default = 'conversion') : name of column with conversion data
+    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
+
+    :returns
+    - dictionary with channels an their attribution score (not-normalized)
+    """
+
+    d = {channel : 0 for channel in unique_channels}
+    for path, path_len, conversions in zip(df[path_col], df[path_len], df[conv_col]):
+        L = path_len
+
+        cur_path = path.split('^')
+        if recent:
+            for channel in cur_path:
+                d[channel] += int(conversions / L)
+                L -= 1
+        else:
+            for channel in reversed(cur_path):
+                d[channel] += int(conversions / L)
+                L -= 1
+
+    return d
+
+def position(df, unique_channels, path_col='path', conv_col='conversion'):
+    """
+    Preforms position_based attribution model
+    In position based model 30% of conversions are attributed to the first and last touchpoints
+    and 40% are evenly attributed to other
+
+    :param
+    - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    - unique_channels (iterable) : list(or other iterable) of channels in paths
+    - path_col (str, default = 'path') : name of column with path data
+    - conv_col (str, default = 'conversion') : name of column with conversion data
+    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
+
+    :returns
+    - dictionary with channels an their attribution score (not-normalized)
+    """
+
+    d = {channel : 0 for channel in unique_channels}
+
+    for path, conversions in zip(df[path_col], df[conv_col]):
+        cur_path = path.split('^')
+        L = len(cur_path)
+
+        for pos in range(L):
+            if pos == 0:
+                d[cur_path[pos]] += conversions * 0.3
+
+            elif pos == L-1 and pos != 0:
+                d[cur_path[pos]] += conversions * 0.3
+
+            else:
+                d[cur_path[pos]] += int((conversions * 0.4) / (L-2))
+
+    return d
+
+# def cpa(df, )
