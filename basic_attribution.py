@@ -196,4 +196,16 @@ def position(df, unique_channels, path_col='path', conv_col='conversion'):
 
     return d
 
-# def cpa(df, )
+def cpa(conversions, conversion_col, costs, cost_col, col_to_join):
+    """
+    Computes CPA
+    :param conversions: pd.DataFrame with conversions data
+    :param costs: pd.DataFrame with cost data
+    :param col_to_join: string name of column to join costs and attribution data
+    :return: pandas.DataFrame with channel_col, total_conversions, total_cost and CPA
+    """
+    df = conversions.merge(costs, left_on=col_to_join, right_on=col_to_join)
+    df['cpa'] = df[cost_col]/ df[conversion_col]
+
+    return df
+
