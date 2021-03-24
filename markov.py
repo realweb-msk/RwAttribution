@@ -37,9 +37,6 @@ class RwMarkov():
                                                left_on = id_col, right_on = id_col)
 
 
-        # TODO: Для нормальных данных
-
-
         # Добавим начало и конец цепочки
         df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
         df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))
@@ -172,7 +169,7 @@ class RwMarkov():
             removal_dot = np.dot(removal_inv_diff, np.asarray(removal_to_conv))
             removal_conversion = pd.DataFrame(removal_dot,
                                        index=removal_to_conv.index)[[1]].loc['Start'].values[0]
-            removal_effect = 1 - removal_conversion / base_conversion_rate
+            removal_effect = (1 - removal_conversion) / base_conversion_rate
             removal_effect_dict[channel] = removal_effect
 
         if self.verbose > 0:
