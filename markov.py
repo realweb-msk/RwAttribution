@@ -44,6 +44,7 @@ class RwMarkov():
 
         if self.verbose > 0:
             print("markov_prep is done")
+
         return df_path
 
     def transitions(self, df_prep):
@@ -169,7 +170,7 @@ class RwMarkov():
             removal_dot = np.dot(removal_inv_diff, np.asarray(removal_to_conv))
             removal_conversion = pd.DataFrame(removal_dot,
                                        index=removal_to_conv.index)[[1]].loc['Start'].values[0]
-            removal_effect = (1 - removal_conversion) / base_conversion_rate
+            removal_effect = 1 - removal_conversion / base_conversion_rate
             removal_effect_dict[channel] = removal_effect
 
         if self.verbose > 0:
@@ -191,7 +192,6 @@ class RwMarkov():
         matrix = self.make_matrix(probs)
         # Посчитали removal effect
         removal = self.removal_effect(matrix, base_cr)
-
 
 
         removal_sum = sum(removal.values())
