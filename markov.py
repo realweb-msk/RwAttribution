@@ -200,7 +200,7 @@ class RwMarkov():
 
 
 
-    def make_markov(self, total_conversions):
+    def make_markov(self):
 
         """Final func to make markov-chain attribution model"""
         # Обработанные данные
