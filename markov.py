@@ -217,7 +217,7 @@ class RwMarkov():
         removal = self.removal_effect(matrix, base_conv_rate)
 
 
-        removal_sum = sum(removal)
+        removal_sum = sum(removal.values())
         return {k: (v / removal_sum) for k, v in removal.items()}
 
 
