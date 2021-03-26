@@ -200,7 +200,7 @@ class RwMarkov():
 
 
 
-    def make_markov(self):
+    def make_markov(self, base_conv_rate):
 
         """Final func to make markov-chain attribution model"""
         # Обработанные данные
@@ -212,7 +212,8 @@ class RwMarkov():
         # Матрица
         matrix = self.make_matrix(probs)
         # Считаем базовый CR
-        base_conv_rate = self.calc_conversions(matrix)
+        # base_conv_rate = self.calc_conversions(matrix)
+        # print(base_conv_rate)
         # Посчитали removal effect
         removal = self.removal_effect(matrix, base_conv_rate)
 
