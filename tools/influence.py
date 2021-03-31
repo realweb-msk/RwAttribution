@@ -14,6 +14,12 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
 
     new_cost : dict, Dictionary with new budget distribution
 
+    conv_col: str, Name of column with conversions/number path amnt
+
+    path_col: str, Name of column with paths
+
+    sep: str, Character that used for separation channels in paths
+
     :returns: df with two new columns: "prob" - probability of particular path occurs,
     conv_col+"new" - path counter with new budget distribution
 
@@ -55,12 +61,33 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
 
     return df
 
-# TODO:
+# TODO: Добавить сдвиг ачального значения относительно нуля
 def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^',
                    change_rate=2.5, sup=1, inf=0):
     """
-    Считаем, что зависимость кол-ва конверсий(цепей) не прямая, а распределена по сигмойде
-    Соотв. делаем все то же что и в linear_change, только по сигмоиде, а не через долю
+    Main idea: influence of external factors on conversion paths are distributed like sigmoid func
+    https://en.wikipedia.org/wiki/Sigmoid_function
+
+    By default we assume that external factors are in the middle of sigmoid func (x=0)
+
+    Sigmoid has following form: 2/(1+exp(-change_rate*x))-1
+
+    :param:
+    df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+
+    cost_dict : dict, Dictionary with unique channels and their cost
+
+    new_cost : dict, Dictionary with new budget distribution
+
+    conv_col: str, Name of column with conversions/number path amnt
+
+    path_col: str, Name of column with paths
+
+    sep: str, Character that used for separation channels in paths
+
+    change_rate: float, int, Parameter for sigmoid function
+
+
     :return:
     """
     channels = cost_dict.keys()
