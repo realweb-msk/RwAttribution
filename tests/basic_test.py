@@ -1,5 +1,5 @@
-from basic_attribution import position, cpa
-from prep import prep_data
+from attribution import position, cpa
+from tools import prep_data
 import pandas as pd
 
 
