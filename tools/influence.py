@@ -56,12 +56,53 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
     return df
 
 # TODO:
-def sigmoid():
+def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^',
+                   change_rate=2.5, sup=1, inf=0):
     """
     Считаем, что зависимость кол-ва конверсий(цепей) не прямая, а распределена по сигмойде
     Соотв. делаем все то же что и в linear_change, только по сигмоиде, а не через долю
     :return:
     """
+    channels = cost_dict.keys()
+    cnt = {channel: 0 for channel in channels}
+
+    for path, conv in zip(df[path_col], df[conv_col]):
+        for channel in path.split(sep):
+            cnt[channel] += conv
+
+    # compute how likely each path with channel occurs
+    df['prob'] = df[conv_col] / df[conv_col].sum()
+
+    # normalized cost for sigmoid
+    cost_norm = {channel: cost / cost for channel, cost in cost_dict.items()}
+    new_cost_norm = {channel: new_cost / cost for channel, new_cost, cost in
+                     zip(new_cost.keys(), new_cost.values(), cost_dict.values())}
+
+    cost_delta = {channel: new_cost-cost for channel, cost, new_cost in
+                  zip(cost_norm.keys(), cost_norm.values(), new_cost_norm.values())}
+
+    # Custom sigmoid for conversion paths
+    def sigmoid(x):
+        return 2/(1+np.exp(-change_rate*x))-1
+
+    new_conv = {channel: cnt[channel]*sigmoid(cost_delta[channel]) for channel in channels}
+
+    res = []
+
+    for path, conv, prob in zip(df[path_col], df[conv_col], df['prob']):
+        conv_new = conv
+        for channel in path.split(sep):
+            conv_new += prob*new_conv[channel]
+            new_conv[channel] -= prob*new_conv[channel]
+
+        res.append(conv_new)
+
+    df[conv_col+'_new'] = res
+    df[conv_col+'_new'] = df[conv_col+'_new'].astype('int')
+    df = df[df[conv_col+'_new'] >= 0]
+
+    return df
+
 
 # TODO:
 def other_dist():
