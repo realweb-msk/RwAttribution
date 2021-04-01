@@ -1,5 +1,125 @@
-import pandas as pd
 import numpy as np
+from tools.exceptions import *
+
+
+def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
+    """
+    Первый случай: бесплатные каналы просто не меняются, т.е. внешние факторы(косты, охват и пр.) при изменении цепочек
+    остаются такими же как они и есть. Изначально бесплатным каналам присваивается среднее среди всех платных каналов.
+
+    Второй случай: при изменении внешних факторов (например увеличении бюджета на медийные размещения) влиянеие
+    внешних факторов на бесплатные каналы меняются в том же направлении, но возможно с меньшей быстротой.
+    Изначально бесплатным каналам присваивается среднее среди всех платных каналов
+
+    Третий случай: WORD EMBEDDINGS, KEKW
+
+    :param:
+    - channel_type: dict, Dictionary where each channel is matched with one of the following types:
+    "FREE", "PAID", "RETARGETING", "MOBILE"
+
+         "FREE": free advertisement i.e. organic, direct, etc.
+         "RETARGETING": paid retargeting
+         "MOBILE": paid mobile ads
+         "PAID": all other paid channels
+
+    :return:
+    """
+
+    channels = cost_dict.keys()
+    new_cost_dict = {}
+
+    # TODO: Refactor code, to make less repetitions
+    # free channels do not change at all
+    if mode == 'fixed':
+        sum_paid = 0
+        n_paid = 0
+        for channel in channels:
+            if channel_type[channel] != "FREE":
+                new_cost_dict[channel] = new_cost[channel]
+                sum_paid += cost_dict[channel]
+                n_paid += 1
+
+            else:
+                new_cost_dict[channel] = 0
+                cost_dict[channel] = 0
+
+        new_cost_dict = {channel: v if v != 0 else sum_paid/n_paid for channel, v in new_cost_dict.items()}
+        initial_cost_dict = {channel: v if v != 0 else sum_paid/n_paid for channel, v in cost_dict.items()}
+
+    # linear change of free channels in relation to mean of paid
+    if mode == "linear":
+        sum_paid_new = 0
+        sum_paid_old = 0
+        n_paid = 0
+        for channel in channels:
+            if channel_type[channel] != "FREE":
+                new_cost_dict[channel] = new_cost[channel]
+                sum_paid_new += new_cost[channel]
+                sum_paid_old += cost_dict[channel]
+                n_paid += 1
+
+            else:
+                new_cost_dict[channel] = 0
+                cost_dict[channel] = 0
+
+        new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
+        initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
+
+    # sigmoid function for non-linear mode
+    def sigmoid(x):
+        """Returns sigmoid of x: 2/(1+exp(-0.5x))-1"""
+        return 1/(1+np.exp(-0.5*x)-1)
+
+    # non-linear (sigmoid) change of free channels in relation to mean of paid
+    if mode == "non-linear":
+        sum_paid_new = 0
+        sum_paid_old = 0
+        n_paid = 0
+        for channel in channels:
+            if channel_type[channel] != "FREE":
+                new_cost_dict[channel] = new_cost[channel]
+                sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
+                sum_paid_old += cost_dict[channel]
+                n_paid += 1
+
+            else:
+                new_cost_dict[channel] = 0
+
+        new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
+        initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
+
+
+    # wighted, influence on FREE channels are done by user
+    if mode == "weighted":
+        try:
+            if weights is None:
+                raise MissInputData
+
+            sum_paid_new = 0
+            sum_paid_old = 0
+            n_paid = 0
+            for channel in channels:
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += new_cost[channel] * weights[channel]
+                    sum_paid_old += cost_dict[channel]
+                    n_paid += 1
+
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
+            initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
+
+        except MissInputData:
+            print('When option mode == "weighted" weights can not be None')
+            print()
+
+
+
+
+    return initial_cost_dict, new_cost_dict
 
 
 def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^'):
@@ -8,17 +128,17 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
     Simple idea: more money we spend to some channel, more often it appears in conv paths
 
     :param:
-    df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+    - df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
 
-    cost_dict : dict, Dictionary with unique channels and their cost
+    - cost_dict : dict, Dictionary with unique channels and their cost
 
-    new_cost : dict, Dictionary with new budget distribution
+    - new_cost : dict, Dictionary with new budget distribution
 
-    conv_col: str, Name of column with conversions/number path amnt
+    - conv_col: str, Name of column with conversions/number path amnt
 
-    path_col: str, Name of column with paths
+    - path_col: str, Name of column with paths
 
-    sep: str, Character that used for separation channels in paths
+    - sep: str, Character that used for separation channels in paths
 
     :returns: df with two new columns: "prob" - probability of particular path occurs,
     conv_col+"new" - path counter with new budget distribution
@@ -62,35 +182,38 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
     return df
 
 
-# TODO: Добавить для бесплатных каналов - FREE ~ DIGITAL
 def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^',
-                   change_rate=2.5, shift=0):
+                   change_rate=2.5, shift=None):
     """
     Main idea: influence of external factors on conversion paths are distributed like sigmoid func
     https://en.wikipedia.org/wiki/Sigmoid_function
 
-    By default we assume that external factors are in the middle of sigmoid func (x=0)
+    By default we assume that external factors are in the middle of sigmoid func (x=0), this can be changed for each
+    channel with shift parameter
 
     Sigmoid has following form: 2/(1+exp(-change_rate*x))-1
 
     :param:
-    df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+    - df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
 
-    cost_dict : dict, Dictionary with unique channels and their cost
+    - cost_dict : dict, Dictionary with unique channels and their cost
 
-    new_cost : dict, Dictionary with new budget distribution
+    - new_cost : dict, Dictionary with new budget distribution
 
-    conv_col: str, Name of column with conversions/number path amnt
+    - conv_col: str (default: "conversion"), Name of column with conversions/number path amnt
 
-    path_col: str, Name of column with paths
+    - path_col: str (default: "path"), Name of column with paths
 
-    sep: str, Character that used for separation channels in paths
+    - sep: str, Character that used for separation channels in paths
 
-    change_rate: float, int, Parameter for sigmoid function
+    - change_rate: float, int, Parameter for sigmoid function
 
+    - shift: dict (default: None), Dictionary with values from interval [-1; 1] for every channel. This values indicate starting point
+    at sigma function.
 
     :return:
     """
+
     channels = cost_dict.keys()
     cnt = {channel: 0 for channel in channels}
 
@@ -110,10 +233,14 @@ def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='pat
                   zip(cost_norm.keys(), cost_norm.values(), new_cost_norm.values())}
 
     # Custom sigmoid for conversion paths
-    def sigmoid(x):
+    def sigmoid(x, shift):
         return 2/(1+np.exp(-change_rate*(x+shift)))-1
 
-    new_conv = {channel: cnt[channel]*sigmoid(cost_delta[channel]) for channel in channels}
+    if shift is None:
+        shift = {channel: 0 for channel in channels}
+
+    # compute new conversions based on sigmoid function
+    new_conv = {channel: cnt[channel]*sigmoid(cost_delta[channel], shift[channel]) for channel in channels}
 
     res = []
 
