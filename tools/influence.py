@@ -61,9 +61,10 @@ def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path
 
     return df
 
-# TODO: Добавить сдвиг ачального значения относительно нуля
+
+# TODO: Добавить для бесплатных каналов - FREE ~ DIGITAL
 def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^',
-                   change_rate=2.5, sup=1, inf=0):
+                   change_rate=2.5, shift=0):
     """
     Main idea: influence of external factors on conversion paths are distributed like sigmoid func
     https://en.wikipedia.org/wiki/Sigmoid_function
@@ -110,7 +111,7 @@ def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='pat
 
     # Custom sigmoid for conversion paths
     def sigmoid(x):
-        return 2/(1+np.exp(-change_rate*x))-1
+        return 2/(1+np.exp(-change_rate*(x+shift)))-1
 
     new_conv = {channel: cnt[channel]*sigmoid(cost_delta[channel]) for channel in channels}
 
