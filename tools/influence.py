@@ -25,7 +25,7 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     :return:
     """
 
-    channels = cost_dict.keys()
+    channels = channel_type.keys()
     new_cost_dict = {}
 
     # TODO: Refactor code, to make less repetitions
@@ -87,7 +87,6 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
 
         new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
         initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
-
 
     # wighted, influence on FREE channels are done by user
     if mode == "weighted":
