@@ -25,82 +25,33 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     :return:
     """
 
-    channels = channel_type.keys()
-    new_cost_dict = {}
-
-    # TODO: Refactor code, to make less repetitions
-    # free channels do not change at all
-    if mode == 'fixed':
-        sum_paid = 0
-        n_paid = 0
-        for channel in channels:
-            if channel_type[channel] != "FREE":
-                new_cost_dict[channel] = new_cost[channel]
-                sum_paid += cost_dict[channel]
-                n_paid += 1
-
-            else:
-                new_cost_dict[channel] = 0
-                cost_dict[channel] = 0
-
-        new_cost_dict = {channel: v if v != 0 else sum_paid/n_paid for channel, v in new_cost_dict.items()}
-        initial_cost_dict = {channel: v if v != 0 else sum_paid/n_paid for channel, v in cost_dict.items()}
-
-    # linear change of free channels in relation to mean of paid
-    if mode == "linear":
-        sum_paid_new = 0
-        sum_paid_old = 0
-        n_paid = 0
-        for channel in channels:
-            if channel_type[channel] != "FREE":
-                new_cost_dict[channel] = new_cost[channel]
-                sum_paid_new += new_cost[channel]
-                sum_paid_old += cost_dict[channel]
-                n_paid += 1
-
-            else:
-                new_cost_dict[channel] = 0
-                cost_dict[channel] = 0
-
-        new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
-        initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
-
-    # sigmoid function for non-linear mode
     def sigmoid(x):
         """Returns sigmoid of x: 2/(1+exp(-0.5x))-1"""
         return 1/(1+np.exp(-0.5*x)-1)
 
-    # non-linear (sigmoid) change of free channels in relation to mean of paid
-    if mode == "non-linear":
-        sum_paid_new = 0
-        sum_paid_old = 0
-        n_paid = 0
-        for channel in channels:
-            if channel_type[channel] != "FREE":
-                new_cost_dict[channel] = new_cost[channel]
-                sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
-                sum_paid_old += cost_dict[channel]
-                n_paid += 1
+    channels = channel_type.keys()
+    new_cost_dict = {}
+    n_paid = 0
+    sum_paid_new = 0
+    sum_paid_old = 0
 
-            else:
-                new_cost_dict[channel] = 0
-
-        new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
-        initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
-
-    # wighted, influence on FREE channels are done by user
-    if mode == "weighted":
-        try:
-            if weights is None:
-                raise MissInputData
-
-            sum_paid_new = 0
-            sum_paid_old = 0
-            n_paid = 0
-            for channel in channels:
+    for channel in channels:
+        # free channels do not change at all
+            if mode == 'fixed':
                 if channel_type[channel] != "FREE":
                     new_cost_dict[channel] = new_cost[channel]
-                    sum_paid_new += new_cost[channel] * weights[channel]
+                    sum_paid_old += cost_dict[channel]
+                    sum_paid_new += cost_dict[channel]
+                    n_paid += 1
+
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            if mode == 'linear':
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += new_cost[channel]
                     sum_paid_old += cost_dict[channel]
                     n_paid += 1
 
@@ -108,15 +59,39 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                     new_cost_dict[channel] = 0
                     cost_dict[channel] = 0
 
-            new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
-            initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
+            if mode == 'non-linear':
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
+                    sum_paid_old += cost_dict[channel]
+                    n_paid += 1
 
-        except MissInputData:
-            print('When option mode == "weighted" weights can not be None')
-            print()
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            if mode == 'weighted':
+                try:
+                    if weights is None:
+                        raise MissInputData
+
+                    if channel_type[channel] != "FREE":
+                        new_cost_dict[channel] = new_cost[channel]
+                        sum_paid_new += new_cost[channel] * weights[channel]
+                        sum_paid_old += cost_dict[channel]
+                        n_paid += 1
+
+                    else:
+                        new_cost_dict[channel] = 0
+                        cost_dict[channel] = 0
+
+                except MissInputData:
+                    print('When option mode == "weighted" weights can not be None')
+                    print()
 
 
-
+    new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
+    initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
 
     return initial_cost_dict, new_cost_dict
 
