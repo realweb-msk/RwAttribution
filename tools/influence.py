@@ -1,8 +1,11 @@
 import numpy as np
 from tools.exceptions import *
+from gensim.models import word2vec
+
 
 
 def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
+    # TODO: Update docstring
     """
     Первый случай: бесплатные каналы просто не меняются, т.е. внешние факторы(косты, охват и пр.) при изменении цепочек
     остаются такими же как они и есть. Изначально бесплатным каналам присваивается среднее среди всех платных каналов.
@@ -23,6 +26,8 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
          "PAID": all other paid channels
 
     :return:
+    - initial_cost_dict: dict, distribution of external for ALL(including free channels) before change,
+    - new_cost_dict: dict, distribution of external for ALL(including free channels) after change
     """
 
     def sigmoid(x):
@@ -35,49 +40,27 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     sum_paid_new = 0
     sum_paid_old = 0
 
-    for channel in channels:
-        # free channels do not change at all
-            if mode == 'fixed':
-                if channel_type[channel] != "FREE":
-                    new_cost_dict[channel] = new_cost[channel]
-                    sum_paid_old += cost_dict[channel]
-                    sum_paid_new += cost_dict[channel]
-                    n_paid += 1
+    try:
+        if mode not in ['fixed', 'linear', 'non-linear', 'weighted']:
+            raise NonListedValue
 
-                else:
-                    new_cost_dict[channel] = 0
-                    cost_dict[channel] = 0
-
-            if mode == 'linear':
-                if channel_type[channel] != "FREE":
-                    new_cost_dict[channel] = new_cost[channel]
-                    sum_paid_new += new_cost[channel]
-                    sum_paid_old += cost_dict[channel]
-                    n_paid += 1
-
-                else:
-                    new_cost_dict[channel] = 0
-                    cost_dict[channel] = 0
-
-            if mode == 'non-linear':
-                if channel_type[channel] != "FREE":
-                    new_cost_dict[channel] = new_cost[channel]
-                    sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
-                    sum_paid_old += cost_dict[channel]
-                    n_paid += 1
-
-                else:
-                    new_cost_dict[channel] = 0
-                    cost_dict[channel] = 0
-
-            if mode == 'weighted':
-                try:
-                    if weights is None:
-                        raise MissInputData
-
+        for channel in channels:
+            # free channels do not change at all
+                if mode == 'fixed':
                     if channel_type[channel] != "FREE":
                         new_cost_dict[channel] = new_cost[channel]
-                        sum_paid_new += new_cost[channel] * weights[channel]
+                        sum_paid_old += cost_dict[channel]
+                        sum_paid_new += cost_dict[channel]
+                        n_paid += 1
+
+                    else:
+                        new_cost_dict[channel] = 0
+                        cost_dict[channel] = 0
+
+                if mode == 'linear':
+                    if channel_type[channel] != "FREE":
+                        new_cost_dict[channel] = new_cost[channel]
+                        sum_paid_new += new_cost[channel]
                         sum_paid_old += cost_dict[channel]
                         n_paid += 1
 
@@ -85,19 +68,79 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                         new_cost_dict[channel] = 0
                         cost_dict[channel] = 0
 
-                except MissInputData:
-                    print('When option mode == "weighted" weights can not be None')
-                    print()
+                if mode == 'non-linear':
+                    if channel_type[channel] != "FREE":
+                        new_cost_dict[channel] = new_cost[channel]
+                        sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
+                        sum_paid_old += cost_dict[channel]
+                        n_paid += 1
+
+                    else:
+                        new_cost_dict[channel] = 0
+                        cost_dict[channel] = 0
+
+                if mode == 'weighted':
+                    try:
+                        if weights is None:
+                            raise MissInputData
+
+                        if channel_type[channel] != "FREE":
+                            new_cost_dict[channel] = new_cost[channel]
+                            sum_paid_new += new_cost[channel] * weights[channel]
+                            sum_paid_old += cost_dict[channel]
+                            n_paid += 1
+
+                        else:
+                            new_cost_dict[channel] = 0
+                            cost_dict[channel] = 0
+
+                    except MissInputData:
+                        print('When option mode == "weighted" weights can not be None')
+                        print()
 
 
-    new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
-    initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
+        new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
+        initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
 
-    return initial_cost_dict, new_cost_dict
+        return initial_cost_dict, new_cost_dict
+
+    except NonListedValue:
+        print('parameter mode should be one of the following values: "fixed", "linear", "non-linear", "weighted"')
+        print()
+
+
+def embeddings_similarity(corpus, unique_channels, path_col='path', sep='^'):
+    """
+    Идея: конверсионные цепочки это тексты, а каналы это слова. Поэтому силу схожести каналов можно определить как
+    косинусную схожесть для двух векторов, полученных при помощи эмбеддингов.
+
+    Функция создает эмбеддинги на основе данных цепочек, для каждого канала возвращает список наиболее схожие каналы
+    с величиной косинусной схожести. Основана на либе gensim https://github.com/RaRe-Technologies/gensim
+
+    :param:
+    - corpus: pandas.DateFrame, dataframe with paths. It is recommended to use prep_data function from tools module
+
+    - unique_channels: iterable, iterable with unique channels in conversion paths
+
+    - path_col: str, optional, name of column with paths
+
+    - sep: str, optional, character to separate channels in paths
+
+    :return: similar_channels: dict, where each channel is matched with the most similar channels and score
+    of this similarity. Score takes value from [-1; 1]
+    """
+
+    corpus['text'] = corpus[path_col].apply(lambda x: x.split(sep))
+    embedding_model = word2vec.Word2Vec(corpus['text'], vector_size=200, epochs=5, window=5, workers=4)
+    similar_channels = {}
+
+    for channel in unique_channels:
+        similar_channels[channel] = embedding_model.wv.most_similar(channel, topn=5)
+
+    return similar_channels
 
 
 def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^'):
-
     """
     Simple idea: more money we spend to some channel, more often it appears in conv paths
 
