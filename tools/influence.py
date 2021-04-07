@@ -109,7 +109,7 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
         print()
 
 
-def embeddings_similarity(corpus, unique_channels, path_col='path', sep='^'):
+def embeddings_similarity(corpus, unique_channels, top_n=None, path_col='path', sep='^'):
     """
     Идея: конверсионные цепочки это тексты, а каналы это слова. Поэтому силу схожести каналов можно определить как
     косинусную схожесть для двух векторов, полученных при помощи эмбеддингов.
@@ -134,8 +134,11 @@ def embeddings_similarity(corpus, unique_channels, path_col='path', sep='^'):
     embedding_model = word2vec.Word2Vec(corpus['text'], vector_size=200, epochs=5, window=5, workers=4)
     similar_channels = {}
 
+    if top_n is None:
+        top_n = len(unique_channels)
+
     for channel in unique_channels:
-        similar_channels[channel] = embedding_model.wv.most_similar(channel, topn=5)
+        similar_channels[channel] = embedding_model.wv.most_similar(channel, topn=top_n)
 
     return similar_channels
 
