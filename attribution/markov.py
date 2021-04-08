@@ -195,11 +195,9 @@ class RwMarkov():
         return removal_effect_dict
 
 
+    def make_markov(self):
 
-
-    def make_markov(self, base_conv_rate):
-
-        """Final func to make markov-chain attribution model"""
+        """Final method to make markov-chain attribution model"""
         # Обработанные данные
         df_prep = self.markov_prep()
         # Все переходы
@@ -209,11 +207,11 @@ class RwMarkov():
         # Матрица
         matrix = self.make_matrix(probs)
         # Считаем базовый CR
-        # base_conv_rate = self.calc_conversions(matrix)
-        # print(base_conv_rate)
+        base_conv_rate = self.calc_conversions(matrix)
+        if self.verbose > 0:
+            print("Base conversion rate:", base_conv_rate)
         # Посчитали removal effect
         removal = self.removal_effect(matrix, base_conv_rate)
-
 
         removal_sum = sum(removal.values())
         return {k: (v / removal_sum) for k, v in removal.items()}
