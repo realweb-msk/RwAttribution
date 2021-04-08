@@ -1,4 +1,4 @@
-from markov import RwMarkov
+from attribution.markov import RwMarkov
 import pandas as pd
 
 

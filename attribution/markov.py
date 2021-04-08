@@ -135,24 +135,21 @@ class RwMarkov():
             print("make_matrix is done")
         return matrix
 
-    def calc_conversions(self, matrix):
-        eigen_value, eigen_vectors = np.linalg.eig(matrix)
-        diagonal = np.diag(np.trunc(eigen_value.real + 0.001))
-        try:
-            res = (eigen_vectors @ diagonal @  np.linalg.inv(eigen_vectors)).real
-        except np.linalg.LinAlgError as err:
-            if "Singular matrix" in str(err):
-                warnings.warn(
-                    "Warning... Singular matrix error. Check for lines or cols "
-                    + "fully filled with zeros."
-                )
-                res = (
-                     eigen_vectors @ diagonal @  np.linalg.pinv(eigen_vectors)
-                ).real
-            else:
-                raise
-        return res[0, -1]
+    # TODO: Update docstring
+    def calc_conversions(self, prep):
+        """
+        Computes basic conversion rate based on prepared data
 
+        :param prep:
+        :return:
+        """
+
+        total_conversions = sum(path.count('Conversion') for path in prep['channel_group'].tolist())
+
+        try:
+            return total_conversions / len(prep[self.id_col])
+        except ZeroDivisionError:
+            print("Input data is empty! Division by zero error")
 
     # TODO: Update docstring
     def removal_effect(self, matrix, base_conversion_rate):
