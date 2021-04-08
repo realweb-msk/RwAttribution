@@ -144,7 +144,7 @@ class RwMarkov():
         :return:
         """
 
-        total_conversions = sum(path.count('Conversion') for path in prep['channel_group'].tolist())
+        total_conversions = sum(path.count('Conversion') for path in prep[self.channel_col].tolist())
 
         try:
             return total_conversions / len(prep[self.id_col])
