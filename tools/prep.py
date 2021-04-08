@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 
 
 def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = True, click_only = False,
@@ -79,3 +78,19 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data = 
 
         return view_gr
 
+
+def dict_to_frame(dictionary, keys_col_name, values_col_name):
+    """
+    Transforms simple dict (without nested structure) into pandas.DataFrame
+    :param dictionary: dictionary
+    :param keys_col_name: name of first column in DataFrame
+    :param values_col_name: name of second columns in DataFrame
+
+    :return: pandas.DataFrame where first col in keys of dictionary and second col is values of dictionary
+    """
+
+    df = pd.DataFrame()
+    df[keys_col_name] = dictionary.keys()
+    df[values_col_name] = dictionary.values()
+
+    return df

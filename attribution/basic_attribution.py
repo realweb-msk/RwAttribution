@@ -1,5 +1,7 @@
 import pandas as pd
 import plotly.express as px
+from tools.prep import dict_to_frame
+from tools.exceptions import MissInputData
 
 
 def last_click(df, path_col='path', conv_col='conversion', plot=True):
@@ -96,18 +98,22 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
 
     return plt_data
 
-def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=True):
+def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=True, as_frame=False,
+            keys_col_name=None, values_col_name=None):
     """
     Preforms last-click attribution model
     :param
     - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
     - unique_channels (iterable) : list(or other iterable) of channels in paths
-    - path_col (str, default = 'path') : name of column with path data
-    - conv_col (str, default = 'conversion') : name of column with conversion data
-    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
-
+    - path_col (str, default='path') : name of column with path data
+    - conv_col (str, default='conversion') : name of column with conversion data
+    - plot (bool, default=True) : whether to plot the data. Plot will contain normalized data
+    - as_frame (bool, optional, default=False) : whether to return data as pandas.DataFrame
+    - keys_col_name (str, optional, default=None): must be specified if as_frame is set to True
+    - values_col_name (str, optional, default=None): must be specified if as_frame is set to True
     :returns
-    - dictionary with channels an their attribution score (not-normalized)
+    - dictionary with channels an their attribution score (not-normalized) if as_frame=False
+    - pandas.DataFrame with channels an their attribution score (not-normalized) if as_frame=True
     """
     df_ = df.copy()
     d = {}
@@ -125,10 +131,20 @@ def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=
         fig.update_yaxes(title_text = 'Группа каналов')
         fig.show()
 
+    if as_frame == True:
+        try:
+            if keys_col_name is not None and values_col_name is not None:
+                return dict_to_frame(d, keys_col_name, values_col_name)
+            else:
+                raise MissInputData
+        except MissInputData:
+            print("When as_frame is set to True keys_col_name and values_col_name must be specified")
+
     return d
 
-def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_col='conversion',
-               plot=True, recent=True):
+
+def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_col='conversion', as_frame=False,
+               plot=True, recent=True, keys_col_name=None, values_col_name=None):
     """
     Preforms time decay attribution model
     when recent = True then more recent channel is more valuable
@@ -159,9 +175,27 @@ def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_c
                 d[channel] += int(conversions / L)
                 L -= 1
 
+        if plot == True:
+            d_ = {k : v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
+            fig = px.bar(y = d_.keys(), x = d_.values(), title = 'Uniform model', orientation = 'h')
+            fig.update_xaxes(title_text = 'Доля от всех конверсий')
+            fig.update_yaxes(title_text = 'Группа каналов')
+            fig.show()
+
+        if as_frame == True:
+            try:
+                if keys_col_name is not None and values_col_name is not None:
+                    return dict_to_frame(d, keys_col_name, values_col_name)
+                else:
+                    raise MissInputData
+            except MissInputData:
+                print("When as_frame is set to True keys_col_name and values_col_name must be specified")
+
     return d
 
-def position(df, unique_channels, path_col='path', conv_col='conversion'):
+
+def position(df, unique_channels, path_col='path', conv_col='conversion', plot=True, as_frame=False,
+             keys_col_name=None, values_col_name=None):
     """
     Preforms position_based attribution model
     In position based model 30% of conversions are attributed to the first and last touchpoints
@@ -194,7 +228,24 @@ def position(df, unique_channels, path_col='path', conv_col='conversion'):
             else:
                 d[cur_path[pos]] += int((conversions * 0.4) / (L-2))
 
+    if plot == True:
+            d_ = {k : v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
+            fig = px.bar(y = d_.keys(), x = d_.values(), title = 'Uniform model', orientation = 'h')
+            fig.update_xaxes(title_text = 'Доля от всех конверсий')
+            fig.update_yaxes(title_text = 'Группа каналов')
+            fig.show()
+
+    if as_frame == True:
+        try:
+            if keys_col_name is not None and values_col_name is not None:
+                return dict_to_frame(d, keys_col_name, values_col_name)
+            else:
+                raise MissInputData
+        except MissInputData:
+            print("When as_frame is set to True keys_col_name and values_col_name must be specified")
+
     return d
+
 
 def cpa(conversions, conversion_col, costs, cost_col, col_to_join):
     """

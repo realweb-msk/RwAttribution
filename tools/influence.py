@@ -2,7 +2,7 @@ import numpy as np
 from tools.exceptions import *
 from gensim.models import word2vec
 
-
+# TODO: КПД
 
 def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
     # TODO: Update docstring
@@ -98,7 +98,6 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                         print('When option mode == "weighted" weights can not be None')
                         print()
 
-
         new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
         initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
 
@@ -109,7 +108,7 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
         print()
 
 
-def embeddings_similarity(corpus, unique_channels, top_n=None, path_col='path', sep='^'):
+def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_col='path', sep='^'):
     """
     Идея: конверсионные цепочки это тексты, а каналы это слова. Поэтому силу схожести каналов можно определить как
     косинусную схожесть для двух векторов, полученных при помощи эмбеддингов.
@@ -121,6 +120,8 @@ def embeddings_similarity(corpus, unique_channels, top_n=None, path_col='path', 
     - corpus: pandas.DateFrame, dataframe with paths. It is recommended to use prep_data function from tools module
 
     - unique_channels: iterable, iterable with unique channels in conversion paths
+
+    -w2v: optional, w2v model in .joblib format
 
     - path_col: str, optional, name of column with paths
 
