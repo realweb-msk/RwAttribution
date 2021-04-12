@@ -141,7 +141,7 @@ def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_co
     for channel in unique_channels:
         similar_channels[channel] = embedding_model.wv.most_similar(channel, topn=top_n)
 
-    return similar_channels
+    return similar_channels, embedding_model
 
 
 def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^'):
