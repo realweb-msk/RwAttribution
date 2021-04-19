@@ -1,8 +1,7 @@
 import pandas as pd
 
-from prep import prep_data
-from RwShapley import shap_and_freq
-from shapley import RwShap
+from tools import prep_data
+from attribution import shap_and_freq, RwShapley
 
 data = pd.read_csv('/data/alphabank.csv',
                    converters = {'client_id' : str})

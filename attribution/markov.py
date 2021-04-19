@@ -207,7 +207,7 @@ class RwMarkov():
         # Матрица
         matrix = self.make_matrix(probs)
         # Считаем базовый CR
-        base_conv_rate = self.calc_conversions(matrix)
+        base_conv_rate = self.calc_conversions(df_prep)
         if self.verbose > 0:
             print("Base conversion rate:", base_conv_rate)
         # Посчитали removal effect

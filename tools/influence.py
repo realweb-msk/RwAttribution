@@ -2,7 +2,6 @@ import numpy as np
 from tools.exceptions import *
 from gensim.models import word2vec
 
-# TODO: КПД
 
 def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
     # TODO: Update docstring
@@ -121,7 +120,7 @@ def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_co
 
     - unique_channels: iterable, iterable with unique channels in conversion paths
 
-    -w2v: optional, w2v model in .joblib format
+    -w2v: optional, pretrained w2v model in .joblib format
 
     - path_col: str, optional, name of column with paths
 

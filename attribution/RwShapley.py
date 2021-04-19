@@ -1,62 +1,246 @@
-from tools.shapley import RwShap
+from itertools import permutations, combinations, product
+import numpy as np
+from collections import defaultdict
 import pandas as pd
 
 
-# Учитываем частоту как FIC
-def freq(df, int_type_col, col_to_group, order_col, id_col, click_weight = 1, view_weight = 3):
+class RwShap():
+    def __init__(self, df, channel_col_name, conv_col_name, sep="^"):
+        self.df = df
+        self.channel_col_name = channel_col_name
+        self.conv_col_name = conv_col_name
+        self.sep = sep
 
+
+    # Считаем все возможные комбинации БЕЗ ПОВТОРОВ
+    def comb(self, l):
+        res = [list(j) for i in range(len(l)) for j in combinations(l, i+1)]
+        return res
+
+
+    # Считаем все возможные комбинации С ПОВТОРАМИ
+    def comb_full(self, vals, max_len = None):
+
+        """
+        Finds ALL possible combinations of set with repitations with the specified length
+
+        **NOTE** Be carefull with large sets and max length, because number of possible combinations is n^max_len
+
+        Inputs:
+        - vals (iterable) - unique set of values for combinations
+        - max_len (int) - maximum length of combination
+
+
+        Outputs: list with all possible combinations
+        """
+
+        res = []
+
+        for l in range(1, max_len + 1, 1):
+            res.extend([p for p in product(vals, repeat = l)])
+
+        return res
+
+
+    # Все возможные подмножества
+    def subs(self, s, with_repetitions):
+        if len(s) == 1:
+            return s
+        else:
+            sub_channels = []
+            for i in range(1, len(s) + 1):
+                sub_channels.extend(map(list, combinations(s, i)))
+
+        if with_repetitions:
+            return list(map(self.sep.join, sub_channels))
+
+        return list(map(self.sep.join, map(sorted, sub_channels)))
+
+
+
+
+    # Вклад
+    def impact(self, A, C_values, with_repetitions):
+        '''
+        Computes impact of coalition (channel combination)
+
+        Input:
+        - A (iterable) : coalition of channels.
+        - C_values (dictionary): containins the number of conversions that each subset of channels has given
+        '''
+        subsets_of_A = self.subs(A, with_repetitions = with_repetitions)
+        worth_of_A = 0
+        for subset in subsets_of_A:
+            if subset in C_values:
+                worth_of_A += C_values[subset]
+        return worth_of_A
+
+
+
+    # Считаем вектор Шэпли
+    def shapley_value(self, max_path_len = 1, with_repetitions=True, channels=None, FIC_data=None):
+
+        # TODO: change docstring
+        '''
+        Calculates shapley values:
+        Input:
+        - df (pandas.DataFrame): A dataframe with the two columns: channels(path) and conversion amnt
+
+        - col_name: A string that is the name of the column with conversions
+                ***NOTE*** Channels should be sorted alphabetically. In this analysis path "Google, Email" is the same as "Email, Google"
+                Thus they should be combined in "Google, Email"
+
+                ***NOTE*** The growth of combinations is exponential 2^(n), so it'll work too slow for large amnts of combinations
+
+        '''
+
+        df = self.df
+
+        c_values = df.set_index(self.channel_col_name).to_dict()[self.conv_col_name]
+
+        if channels is None:
+            df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split(self.sep)) == 1 else np.nan)
+            channels = list(df['channels'].dropna().unique())
+
+        else:
+            channels = channels
+
+
+        # В наших цепочках каналы могут повторяться
+        if with_repetitions:
+            # Максимальная длина цепочки должна быть < число каналов
+            if len(channels) <= max_path_len:
+                return "Maximum path length can't be larger than unique channels amnt"
+
+            v_values = {}
+
+            for A in self.comb_full(channels, max_path_len):
+                v_values[self.sep.join(A)] = self.impact(A, c_values, with_repetitions)
+
+
+            n = len(channels)
+            shapley_values = defaultdict(int)
+
+            for channel in channels:
+                for A in v_values.keys():
+
+                    if channel not in A.split(self.sep):
+
+                        cardinal_A = len(A.split(self.sep))
+                        A_with_channel = A.split(self.sep)
+
+                        if cardinal_A < max_path_len:
+                            A_with_channel.append(channel)
+
+                        A_with_channel = self.sep.join(A_with_channel)
+
+                        # Weight = |S|!(n-|S|-1)!/n!
+                        weight = (np.math.factorial(cardinal_A) *
+                                  np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
+
+                        # Marginal contribution = v(S U {i})-v(S)
+                        contrib = (v_values[A_with_channel] - v_values[A])
+                        shapley_values[channel] += weight * contrib
+
+                # Add the term corresponding to the empty set
+                shapley_values[channel] += v_values[channel] / n
+
+            sh_df = (
+                pd.DataFrame(data = shapley_values.values(), index = shapley_values.keys())
+                .reset_index()
+                # TODO : change index : 'channel_group' to smth general
+                .rename(columns = {'index' : 'channel_group', 0 : 'weight'})
+                    )
+            sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
+
+            return(sh_df)
+
+
+        # Берем только уникальные каналы, причем последовательность каналов
+        # Должна быть отсортирована в алфавитном порядке
+        else:
+            v_values = {}
+
+            for A in self.comb(channels):
+                v_values[self.sep.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
+
+
+
+            n = len(channels)
+            shapley_values = defaultdict(int)
+
+
+            for channel in channels:
+                for A in v_values.keys():
+
+                    if channel not in A.split(self.sep):
+
+                        cardinal_A = len(A.split(self.sep))
+                        A_with_channel = A.split(self.sep)
+                        A_with_channel = self.sep.join(sorted(A_with_channel))
+
+                        # Weight = |S|!(n-|S|-1)!/n!
+                        weight = (np.math.factorial(cardinal_A) *
+                                  np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
+
+                        # Marginal contribution = v(S U {i})-v(S)
+                        contrib = (v_values[A_with_channel] - v_values[A])
+                        shapley_values[channel] += weight * contrib
+
+                # Add the term corresponding to the empty set
+                shapley_values[channel] += v_values[channel] / n
+
+            sh_df = (
+                pd.DataFrame(data=shapley_values.values(), index=shapley_values.keys())
+                .reset_index()
+                # TODO : change index : 'channel_group' to smth general
+                .rename(columns={'index': 'channel_group', 0: 'weight'})
+                    )
+
+            sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
+
+            return sh_df
+
+
+def shap_and_freq( sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
     """
-    Computes frequency impact coefficient (FIC)
-    FIC is defined as: (number of unique paths where channel appeared)
-    / (number of occurences  of a channel in dataset)
+    Combines FIC and Shapley Value attribution
 
-    Inputs:
-    - df (pandas.DataFrame)
-    - int_type_col (str)
-    - cnt_col (str)
+    :param sh_clicks: (pd.DataFrame, optional, default=None), if separated=True must be specified, result
+    of tools.prep.compute_FIC for ONLY "Click" interactions
+
+    :param sh_impr: (pd.DataFrame, optional, default=None), if separated=True must be specified, result
+    of tools.prep.compute_FIC for ONLY "Impression" interactions
+
+    :param FIC_data: (tuple of pandas.DataFrames), result of tools.prep.compute_FIC, dataframe with FIC for each channel
+    for clicks and impressions
+
+    :param FIC_on: (str), name of column in FIC DataFrame to merge with shapley data
+
+    :param shap_on: (str), name of column in sh_data DataFrame to merge with shapley data
+
+
+    :return:
     """
 
-    # clicks
-    c = df[df[int_type_col] == "Click"]
-    c = (c
-         .groupby(col_to_group, as_index = False)
-         .agg({order_col : 'count', id_col : 'nunique'})
-         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
-        )
-    c['FIC'] = c['uniq_path'] / c['total_occ']
+    freq_c, freq_i = FIC_data
 
 
-    # impressions
-    i = df[df[int_type_col] == "Impression"]
-    i = (i
-         .groupby(col_to_group, as_index = False)
-         .agg({order_col : 'count', id_col : 'nunique'})
-         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
-        )
-    i['FIC'] = i['uniq_path'] / i['total_occ']
+    click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
+    view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
 
-    return (c[[col_to_group, 'FIC']], i[[col_to_group, 'FIC']])
-
-
-# Combine Shapley and FIC
-def shap_and_freq(sh_clicks, sh_views, df_for_freq, int_type_col, channel_col, col_to_group, order_col, id_col):
-
-    data = df_for_freq
-
-
-    freq_c, freq_i = freq(data, int_type_col, col_to_group, order_col, id_col)
-
-
-    click = sh_clicks.merge(freq_c, left_on = channel_col, right_on = channel_col)
-    view = sh_views.merge(freq_i, left_on = channel_col, right_on = channel_col)
 
     total = (click
-             .merge(view, how = 'outer', left_on = channel_col, right_on = channel_col)
+             .merge(view, how = 'outer', left_on=shap_on, right_on = shap_on)
              .fillna(0)
-            )
+             )
 
     total['total_weight'] = total['weight_x'] * total['FIC_x'] + total['weight_y'] * total['FIC_y']
 
     total['total_weight'] = total['total_weight'] / total['total_weight'].sum()
 
-    return total[[channel_col, 'total_weight']]
+    return total[[shap_on, 'total_weight']]
+
+
+
+
