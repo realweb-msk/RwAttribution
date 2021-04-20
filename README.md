@@ -33,7 +33,7 @@ Default and custom attribution mode &amp; pipeline for them
 Каждый метод принимает на вход данные, полученные после предобработки при помощи
 `tools.prep.prep_data`
 
-В `RwShapley` реализована класс RwShapley, который сочетает в себе базовую 
+В `RwShapley` реализован класс RwShapley, который сочетает в себе базовую 
 модель атрибуции Шэпли, и кастомную, реализуемую при помощи `tools.prep.compute_FIC`
 
 В модуле `makov` реализован класс `RwMarkov`. Эта модель атрибуции требует
