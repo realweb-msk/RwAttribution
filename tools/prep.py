@@ -1,8 +1,8 @@
 import pandas as pd
+from tools.exceptions import MissInputData
 
-
-def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data=True, click_only=False,
-              view_only=False, sort=True, verbose=0, sep='^'):
+def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=False, conv_col=None,
+              full_data=True, click_only=False, view_only=False, sort=True, verbose=0, sep='^'):
 
     """
     Function that does initial data preprocessing
@@ -10,8 +10,19 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, full_data=Tr
     Returns: tuple
     """
 
+    if with_null_path == True:
+        try:
+            if conv_col is not None:
+                id_s = df.query(f"{conv_col} == 1")[client_id_col].unique()
+                df = df[df[client_id_col].isin(id_s)]
+            else:
+                raise MissInputData
+        except MissInputData as e:
+            print("When with_null_path=True, data must contain conv_col")
+
+
     df["channel_new"] = df[channel_col] + sep
-    # Собираем цепчки вместе
+    # Собираем цепочки вместе
     if full_data:
         full = (df
                 .groupby(client_id_col, as_index = False).agg({'channel_new': 'sum'})
