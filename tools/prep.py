@@ -1,16 +1,34 @@
 import pandas as pd
 from tools.exceptions import MissInputData
 
-def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=False, conv_col=None,
-              full_data=True, click_only=False, view_only=False, sort=True, verbose=0, sep='^'):
+def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=True, conv_col=None,
+              full_data=True, click_only=False, view_only=False, sort=False, verbose=0, sep='^'):
 
     """
-    Function that does initial data preprocessing
+    Function that does initial data preprocessing. You can find expected input data format here:
+    https://github.com/realweb-msk/RwAttribution#readme
 
-    Returns: tuple
+    In case dataset has paths, that did not lead to conversion set parameter with_null_path to False
+
+    :param df: (pandas.DataFrame), dataset with conversion paths
+    :param channel_col: (str), name of the column with channel of touchpoint
+    :param client_id_col: (str), name of the column with some id (conversionId, clientId, cookie, etc.) of touchpoint
+    :param interaction_type_col: (str), name of the column with one of the following interaction_types:
+    "Click", "Impression".
+    :param with_null_path: (bool, optional, default=True), In case dataset has paths, that did not lead to conversion
+    set parameter to False and provide conv_col
+    :param conv_col: (str, optional), name of the column with path's conversion flag (int or bool). Must be provided
+    if with_null_path is set to False
+    :param full_data: (bool, optional, default=True), whether to return full_data, click_data and impression_data
+    :param click_only: (bool, optional, default=False), whether to return click_data only
+    :param view_only: (bool, optional, default=False), whether to return impression_data only
+    :param sort: (bool, optional, default=True)
+    :param verbose:
+    :param sep:
+    :return:
     """
 
-    if with_null_path == True:
+    if with_null_path == False:
         try:
             if conv_col is not None:
                 id_s = df.query(f"{conv_col} == 1")[client_id_col].unique()
@@ -19,6 +37,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
                 raise MissInputData
         except MissInputData as e:
             print("When with_null_path=True, data must contain conv_col")
+            raise e
 
 
     df["channel_new"] = df[channel_col] + sep
@@ -53,7 +72,6 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
 
         return res[:-1]
 
-
     # Отсортируем каналы в цепочке по алфавиту и сгруппируем по цепочкам
     def sort_and_group(df, sort):
         df['path'] = df['path'].apply(lambda x: x[:-1])
@@ -70,7 +88,6 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
             return df_gr
 
         return df_gr
-
 
     if full_data:
         full_gr = sort_and_group(full, sort)

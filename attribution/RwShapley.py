@@ -78,7 +78,7 @@ class RwShap():
 
 
     # Считаем вектор Шэпли
-    def shapley_value(self, max_path_len = 1, with_repetitions=True, channels=None, FIC_data=None):
+    def shapley_value(self, max_path_len=1, with_repetitions=True, channels=None):
 
         # TODO: change docstring
         '''
