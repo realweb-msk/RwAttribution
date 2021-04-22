@@ -1,6 +1,7 @@
 import pandas as pd
 from tools.exceptions import MissInputData
 
+
 def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=True, conv_col=None,
               full_data=True, click_only=False, view_only=False, sort=False, verbose=0, sep='^'):
 

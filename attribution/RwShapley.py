@@ -58,7 +58,6 @@ class RwShap():
 
 
 
-
     # Вклад
     def impact(self, A, C_values, with_repetitions):
         '''
