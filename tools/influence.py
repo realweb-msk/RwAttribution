@@ -113,15 +113,16 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                     # In this case input wights should be in format of dict which values are also dicts
                     if channel in weights:
                         for k, v in weights.items():
-                            # In case when FREE channel is in weights dictionary
+                            # In case FREE channel is in weights dictionary
                             try:
                                 new_cost_dict[k] = cost_dict[k]
                             finally:
                                 new_cost_dict[k] = 0
 
                             for k_, v_ in v.items():
-                                # TODO: figure out how to handle positive and negative change
-                                new_cost_dict[k] += (new_cost[k_] - cost_dict[k_]) * v_
+                                # If weight is negative and cost are decreasing, we assume there is no change
+                                if not (v_ < 0 and new_cost[k_] < cost_dict[k_]):
+                                    new_cost_dict[k] += (new_cost[k_] - cost_dict[k_]) * v_
                     else:
                         if channel_type[channel] != 'FREE':
                             new_cost_dict[channel] = new_cost[channel]
