@@ -4,19 +4,10 @@ from gensim.models import word2vec
 
 
 def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
-    # TODO: Update docstring
     """
-    Первый случай: бесплатные каналы просто не меняются, т.е. внешние факторы(косты, охват и пр.) при изменении цепочек
-    остаются такими же как они и есть. Изначально бесплатным каналам присваивается среднее среди всех платных каналов.
+    Method for calculation how changing cost, reach, etc. in some channels will affect other
 
-    Второй случай: при изменении внешних факторов (например увеличении бюджета на медийные размещения) влиянеие
-    внешних факторов на бесплатные каналы меняются в том же направлении, но возможно с меньшей быстротой.
-    Изначально бесплатным каналам присваивается среднее среди всех платных каналов
-
-    Третий случай: WORD EMBEDDINGS, KEKW
-
-    :param:
-    - channel_type: dict, Dictionary where each channel is matched with one of the following types:
+    :param channel_type: (dict), Dictionary where each channel is matched with one of the following types:
     "FREE", "PAID", "RETARGETING", "MOBILE"
 
          "FREE": free advertisement i.e. organic, direct, etc.
@@ -24,8 +15,32 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
          "MOBILE": paid mobile ads
          "PAID": all other paid channels
 
-    :return:
-    - initial_cost_dict: dict, distribution of external for ALL(including free channels) before change,
+    :param cost_dict: (dict), Dictionary with non-FREE channels and their initial cost
+    (or some other changing parameter, e.g. reach)
+    :param new_cost: (dict), Dictionary with non-FREE channels and their cost (or some other changing parameter,
+     e.g. reach) in the future, e.g. after budget optimisation
+    :param mode: (str, optional, default="fixed"), Mode, which will be used for computing new influence.
+    Should be one of the following values:
+    - "fixed": FREE channels do not change at all, their initial and after cost is avg of non-FREE channels
+    - "linear": FREE channels change linear to corresponding changes in non-FREE channels, e.g. if
+    non-FREE channels cost increased by 10%, FREE channel after cost will be increased by 10%
+    - "non-linear": similar to "linear", but cost growth is defined by sigmoid function, not linear
+    - "weighted_free": After cost of FREE channels computed as weighted average of non-FREE channels
+    - "weighted_full": ALL channel's after cost is dependent on weights
+    :param weights: (optional, default=None), Weights dict. Must be not None when mode is set to
+    "weighted_free" or "wighted_full".
+    When mode="weighted_free" weights dict expected to be in the following format:
+            {'some_channel': 0.123, # 0.123 and 0.42 are channel weights
+             'other_channel': 0.42
+            }
+
+    When mode="weighted_full" weights dict expected to be in the following format:
+            # In this case input wights should be in format of dict which values are also dicts
+            {'some_channel': {'channel_A: 0.123, 'channel_B': 0.42},
+             'other_channel': {'channel_C': 0.321, 'channel_A': 0.12}
+            }
+
+    :return: - initial_cost_dict: dict, distribution of external for ALL(including free channels) before change,
     - new_cost_dict: dict, distribution of external for ALL(including free channels) after change
     """
 
@@ -40,7 +55,7 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     sum_paid_old = 0
 
     try:
-        if mode not in ['fixed', 'linear', 'non-linear', 'weighted']:
+        if mode not in ('fixed', 'linear', 'non-linear', 'weighted_free', 'weighted_full'):
             raise NonListedValue
 
         for channel in channels:
@@ -78,24 +93,45 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                         new_cost_dict[channel] = 0
                         cost_dict[channel] = 0
 
-                if mode == 'weighted':
-                    try:
-                        if weights is None:
-                            raise MissInputData
+                if mode == 'weighted_free':
+                    if weights is None:
+                        raise MissInputData
 
-                        if channel_type[channel] != "FREE":
+                    if channel_type[channel] != "FREE":
+                        new_cost_dict[channel] = new_cost[channel]
+                        sum_paid_new += new_cost[channel] * weights[channel]
+                        sum_paid_old += cost_dict[channel]
+                        n_paid += 1
+
+                    else:
+                        new_cost_dict[channel] = 0
+                        cost_dict[channel] = 0
+
+                if mode == 'weighted_full':
+                    if weights is None:
+                        raise MissInputData
+                    # In this case input wights should be in format of dict which values are also dicts
+                    if channel in weights:
+                        for k, v in weights.items():
+                            # In case when FREE channel is in weights dictionary
+                            try:
+                                new_cost_dict[k] = cost_dict[k]
+                            finally:
+                                new_cost_dict[k] = 0
+
+                            for k_, v_ in v.items():
+                                # TODO: figure out how to handle positive and negative change
+                                new_cost_dict[k] += (new_cost[k_] - cost_dict[k_]) * v_
+                    else:
+                        if channel_type[channel] != 'FREE':
                             new_cost_dict[channel] = new_cost[channel]
-                            sum_paid_new += new_cost[channel] * weights[channel]
+                            sum_paid_new += new_cost[channel]
                             sum_paid_old += cost_dict[channel]
                             n_paid += 1
 
                         else:
                             new_cost_dict[channel] = 0
                             cost_dict[channel] = 0
-
-                    except MissInputData:
-                        print('When option mode == "weighted" weights can not be None')
-                        print()
 
         new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
         initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
@@ -105,6 +141,12 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     except NonListedValue:
         print('parameter mode should be one of the following values: "fixed", "linear", "non-linear", "weighted"')
         print()
+        raise NonListedValue
+
+    except MissInputData:
+        print('When option mode == "weighted_free" weights can not be None')
+        print()
+        raise MissInputData
 
 
 def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_col='path', sep='^'):
@@ -278,16 +320,6 @@ def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='pat
 
     return df
 
-
-# TODO:
-def other_dist():
-    """
-    Предполагаем, что зависимость кол-ва конверсий(цепей) не прямая, а подчиняется какому то распределению
-    Соотв на основе этого строим вероятности, семплируем и т.д.
-    Должно быть чем то похоже на create_new_chain
-
-    :return:
-    """
 
 # TODO:
 def create_new_chain():
