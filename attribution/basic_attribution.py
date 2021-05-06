@@ -98,6 +98,7 @@ def first_click(df, path_col = 'path', conv_col='conversion', plot=True):
 
     return plt_data
 
+
 def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=True, as_frame=False,
             keys_col_name=None, values_col_name=None):
     """
@@ -140,7 +141,6 @@ def uniform(df, unique_channels, path_col = 'path', conv_col='conversion', plot=
         except MissInputData:
             print("When as_frame is set to True keys_col_name and values_col_name must be specified")
 
-    return d
 
 
 def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_col='conversion', as_frame=False,
@@ -175,21 +175,21 @@ def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_c
                 d[channel] += int(conversions / L)
                 L -= 1
 
-        if plot == True:
-            d_ = {k : v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
-            fig = px.bar(y = d_.keys(), x = d_.values(), title = 'Uniform model', orientation = 'h')
-            fig.update_xaxes(title_text = 'Доля от всех конверсий')
-            fig.update_yaxes(title_text = 'Группа каналов')
-            fig.show()
+    if plot == True:
+        d_ = {k: v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
+        fig = px.bar(y=d_.keys(), x=d_.values(), title='Time decay model', orientation='h')
+        fig.update_xaxes(title_text='Доля от всех конверсий')
+        fig.update_yaxes(title_text='Группа каналов')
+        fig.show()
 
-        if as_frame == True:
-            try:
-                if keys_col_name is not None and values_col_name is not None:
-                    return dict_to_frame(d, keys_col_name, values_col_name)
-                else:
-                    raise MissInputData
-            except MissInputData:
-                print("When as_frame is set to True keys_col_name and values_col_name must be specified")
+    if as_frame == True:
+        try:
+            if keys_col_name is not None and values_col_name is not None:
+                return dict_to_frame(d, keys_col_name, values_col_name)
+            else:
+                raise MissInputData
+        except MissInputData:
+            print("When as_frame is set to True keys_col_name and values_col_name must be specified")
 
     return d
 
@@ -229,10 +229,10 @@ def position(df, unique_channels, path_col='path', conv_col='conversion', plot=T
                 d[cur_path[pos]] += int((conversions * 0.4) / (L-2))
 
     if plot == True:
-            d_ = {k : v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
-            fig = px.bar(y = d_.keys(), x = d_.values(), title = 'Uniform model', orientation = 'h')
-            fig.update_xaxes(title_text = 'Доля от всех конверсий')
-            fig.update_yaxes(title_text = 'Группа каналов')
+            d_ = {k: v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
+            fig = px.bar(y=d_.keys(), x=d_.values(), title='Position based model', orientation='h')
+            fig.update_xaxes(title_text='Доля от всех конверсий')
+            fig.update_yaxes(title_text='Группа каналов')
             fig.show()
 
     if as_frame == True:
