@@ -3,7 +3,7 @@ import plotly.express as px
 from tools.prep import dict_to_frame
 from tools.exceptions import MissInputData
 
-
+# TODO: Сделать нейминг столбцов единообразным для весх атрибуций
 def last_click(df, path_col='path', conv_col='conversion', plot=True):
     """
     Preforms last-click attribution model
