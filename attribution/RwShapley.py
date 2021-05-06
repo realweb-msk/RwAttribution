@@ -2,6 +2,7 @@ from itertools import permutations, combinations, product
 import numpy as np
 from collections import defaultdict
 import pandas as pd
+import plotly.express as px
 
 
 class RwShap():
@@ -22,9 +23,9 @@ class RwShap():
     def comb_full(self, vals, max_len = None):
 
         """
-        Finds ALL possible combinations of set with repitations with the specified length
+        Finds ALL possible combinations of set with repetitions with the specified length
 
-        **NOTE** Be carefull with large sets and max length, because number of possible combinations is n^max_len
+        **NOTE** Be careful with large sets and max length, because number of possible combinations is n^max_len
 
         Inputs:
         - vals (iterable) - unique set of values for combinations
@@ -37,7 +38,7 @@ class RwShap():
         res = []
 
         for l in range(1, max_len + 1, 1):
-            res.extend([p for p in product(vals, repeat = l)])
+            res.extend([p for p in product(vals, repeat=l)])
 
         return res
 
@@ -57,7 +58,6 @@ class RwShap():
         return list(map(self.sep.join, map(sorted, sub_channels)))
 
 
-
     # Вклад
     def impact(self, A, C_values, with_repetitions):
         '''
@@ -67,7 +67,7 @@ class RwShap():
         - A (iterable) : coalition of channels.
         - C_values (dictionary): containins the number of conversions that each subset of channels has given
         '''
-        subsets_of_A = self.subs(A, with_repetitions = with_repetitions)
+        subsets_of_A = self.subs(A, with_repetitions=with_repetitions)
         worth_of_A = 0
         for subset in subsets_of_A:
             if subset in C_values:
@@ -75,9 +75,8 @@ class RwShap():
         return worth_of_A
 
 
-
     # Считаем вектор Шэпли
-    def shapley_value(self, max_path_len=1, with_repetitions=True, channels=None):
+    def shapley_value(self, max_path_len=1, with_repetitions=True, channels=None, plot=True):
 
         # TODO: change docstring
         '''
@@ -90,20 +89,20 @@ class RwShap():
                 Thus they should be combined in "Google, Email"
 
                 ***NOTE*** The growth of combinations is exponential 2^(n), so it'll work too slow for large amnts of combinations
-
         '''
 
         df = self.df
 
         c_values = df.set_index(self.channel_col_name).to_dict()[self.conv_col_name]
+        # Test feature
+        # if fic is not None:
+        #     for k, conv in c_values.items():
+        #         path = k.split(self.sep)
+        #         for k_, w in fic.items():
+
 
         if channels is None:
             df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split(self.sep)) == 1 else np.nan)
-            channels = list(df['channels'].dropna().unique())
-
-        else:
-            channels = channels
-
 
         # В наших цепочках каналы могут повторяться
         if with_repetitions:
@@ -115,7 +114,6 @@ class RwShap():
 
             for A in self.comb_full(channels, max_path_len):
                 v_values[self.sep.join(A)] = self.impact(A, c_values, with_repetitions)
-
 
             n = len(channels)
             shapley_values = defaultdict(int)
@@ -145,15 +143,20 @@ class RwShap():
                 shapley_values[channel] += v_values[channel] / n
 
             sh_df = (
-                pd.DataFrame(data = shapley_values.values(), index = shapley_values.keys())
+                pd.DataFrame(data=shapley_values.values(), index=shapley_values.keys())
                 .reset_index()
                 # TODO : change index : 'channel_group' to smth general
-                .rename(columns = {'index' : 'channel_group', 0 : 'weight'})
+                .rename(columns={'index': 'channel_group', 0: 'weight'})
                     )
             sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
 
-            return(sh_df)
+            if plot:
+                fig = px.bar(y=sh_df['channel_group'], x=sh_df['weight'], title='Shapley value model', orientation='h')
+                fig.update_xaxes(title_text='Доля от всех конверсий')
+                fig.update_yaxes(title_text='Группа каналов')
+                fig.show()
 
+            return sh_df
 
         # Берем только уникальные каналы, причем последовательность каналов
         # Должна быть отсортирована в алфавитном порядке
@@ -162,8 +165,6 @@ class RwShap():
 
             for A in self.comb(channels):
                 v_values[self.sep.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
-
-
 
             n = len(channels)
             shapley_values = defaultdict(int)
@@ -201,7 +202,7 @@ class RwShap():
             return sh_df
 
 
-def shap_and_freq( sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
+def shap_and_freq(sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
     """
     Combines FIC and Shapley Value attribution
 
@@ -224,13 +225,11 @@ def shap_and_freq( sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
 
     freq_c, freq_i = FIC_data
 
-
     click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
     view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
 
-
     total = (click
-             .merge(view, how = 'outer', left_on=shap_on, right_on = shap_on)
+             .merge(view, how='outer', left_on=shap_on, right_on = shap_on)
              .fillna(0)
              )
 
