@@ -1,80 +1,134 @@
 import pandas as pd
 import numpy as np
 from collections import defaultdict
-import warnings
+from tools.exceptions import MissInputData
 
-class RwMarkov():
 
-    def __init__(self, df, channel_col, id_col, order_col, conv_col, verbose=0):
+class RwMarkov:
+    """
+    Class for markov chain attribution model
+    """
+
+    def __init__(self, df, channel_col, conv_col, id_col=None, order_col=None, conv_cnt=None, cm_full_path=False,
+                 verbose=0):
+        """
+        :param df: (pd.DataFrame), dataframe with paths You can find expected input data format here:
+        https://github.com/realweb-msk/RwAttribution#readme
+        :param channel_col: (str), name of column with channel(or path) data
+        :param conv_col: (str), name of column with conversion flag
+        :param id_col: (str, optional, default=None), name of column with some id (clientId, conversionId, etc.).
+         Must be specified when cm_full_path=False
+        :param order_col: (str, optional, default=None), name of column with order
+         (time, precomputed interaction number, etc.) Must be specified when cm_full_path=False
+        :param conv_cnt: (str, optional, default=None), name of column with total number of path's occurrences.
+         Must be specified when cm_fill_path=True
+        :param cm_full_path: (bool, optional, default=False), whether to preprocess and compute transitions
+         based on Campaign Manager Full paths report. You can find an example of SQL query in sql.cm_full_path_prep
+        :param verbose: (int), when verbose > 1 print progress
+        """
         self.df = df
         self.channel_col = channel_col
         self.unique_channels = np.append(df[channel_col].unique(), ['Start', 'Conversion', 'Null'])
         self.id_col = id_col
         self.order_col = order_col
         self.conv_col = conv_col
+        self.conv_cnt = conv_cnt
+        self.cm_full_path = cm_full_path
         self.verbose = verbose
 
 
-    def markov_prep(self):
-
-        """Preprocess data for markov chains"""
-
-        if self.verbose > 0:
-            print("started markov_prep")
-
-        id_col = self.id_col
-        order_col = self.order_col
-        channel_col = self.channel_col
-        conv_col = self.conv_col
-
-        df = self.df.sort_values([id_col, order_col])
-
-        # Нужно для тестовых данных
-        df['interaction_number'] = df.groupby(id_col).cumcount() + 1
-        df_path = df.groupby(id_col)[channel_col].aggregate(lambda x: x.tolist()).reset_index()
-
-        df_last_int = df.drop_duplicates(id_col, keep='last')[[id_col, conv_col]]
-        df_path = df_path.merge(df_last_int, how = 'left',
-                                               left_on = id_col, right_on = id_col)
-
-
-        # Добавим начало и конец цепочки
-        df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
-        df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))
-        df_path.query(f'{conv_col} == 1')[channel_col].apply(lambda x: x.append('Conversion'))
+    def markov_prep(self, sep="^"):
+        """
+        Preprocess data for markov chains with respect for cm_full_path
+        :param sep: (str, optional, default='^'), character that separates touchpoints in paths
+        :raises MissInputData: when one of the *args is not defined
+        """
 
         if self.verbose > 0:
-            print("markov_prep is done")
+            print("Started markov_prep")
+
+        if self.cm_full_path:
+            if self.conv_cnt is None:
+                print("When cm_full_path is True conv_cnt must be provided")
+                raise MissInputData
+
+            channel_col = self.channel_col
+            conv_col = self.conv_col
+            df_path = self.df
+
+            df_path[channel_col] = df_path[channel_col].apply(lambda x: x.split(sep))
+
+            df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
+            df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))
+            df_path.query(f'{conv_col} == 1')[channel_col].apply(lambda x: x.append('Conversion'))
+
+        else:
+            if self.id_col is None and self.order_col is None:
+                print("When cm_full_path is False id_col and order_col must be provided")
+                raise MissInputData
+            id_col = self.id_col
+            order_col = self.order_col
+            channel_col = self.channel_col
+            conv_col = self.conv_col
+
+            df = self.df.sort_values([id_col, order_col])
+
+            # Нужно для тестовых данных
+            df['interaction_number'] = df.groupby(id_col).cumcount() + 1
+            df_path = df.groupby(id_col)[channel_col].aggregate(lambda x: x.tolist()).reset_index()
+
+            df_last_int = df.drop_duplicates(id_col, keep='last')[[id_col, conv_col]]
+            df_path = df_path.merge(df_last_int, how='left',
+                                                   left_on=id_col, right_on = id_col)
+
+            # Добавим начало и конец цепочки
+            df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
+            df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))
+            df_path.query(f'{conv_col} == 1')[channel_col].apply(lambda x: x.append('Conversion'))
+
+            if self.verbose > 0:
+                print("markov_prep is done")
 
         return df_path
 
+
     def transitions(self, df_prep):
         """
-        Computes ALL transition points in paths
+        Computes ALL transition points in paths with respect to cm_full_path
+        :param df_prep: result of self.markov_prep method
         """
 
         if self.verbose > 0:
             print("started transitions")
 
         path_list = df_prep[self.channel_col]
+        conv_list = df_prep[self.conv_cnt] if self.cm_full_path else None
         unique_channels = self.unique_channels
         states = {x + '>' + y: 0 for x in unique_channels for y in unique_channels}
 
         # Ugly cycles
         # TODO: Try to optimize somehow
         for state in unique_channels:
-            if state not in ['Conversion', 'Null']:
-                for current_path in path_list:
-                    if state in current_path:
-                        indices = [i for i, s in enumerate(current_path) if state in s]
-                        for col in indices:
-                            states[current_path[col] + '>' + current_path[col + 1]] += 1
+            if state not in ('Conversion', 'Null'):
+                # Делим на предобработку для обычных данных и для данных из cm_full_path
+                if self.cm_full_path:
+                    for current_path, current_conv in zip(path_list, conv_list):
+                        if state in current_path:
+                            indices = (i for i, s in enumerate(current_path) if state in s)
+                            for col in indices:
+                                states[current_path[col] + '>' + current_path[col + 1]] += current_conv
+
+                else:
+                    for current_path in path_list:
+                        if state in current_path:
+                            indices = (i for i, s in enumerate(current_path) if state in s)
+                            for col in indices:
+                                states[current_path[col] + '>' + current_path[col + 1]] += 1
 
         if self.verbose > 0:
             print("transitions is done")
+
         return states
-
-
 
 
     def prob(self, trans_dict):
@@ -104,9 +158,9 @@ class RwMarkov():
                         state_prob = float((trans_dict[list(trans_dict)[col]])) / float(cnt)
                         trans_prob[list(trans_dict)[col]] = state_prob
 
-
         if self.verbose > 0:
             print("prob is done")
+
         return trans_prob
 
 
@@ -138,10 +192,9 @@ class RwMarkov():
     # TODO: Update docstring
     def calc_conversions(self, prep):
         """
-        Computes basic conversion rate based on prepared data
+        Computes basic conversion rate based on prepared data with
 
-        :param prep:
-        :return:
+        :param prep: result of self.markov_prep method
         """
 
         total_conversions = sum(path.count('Conversion') for path in prep[self.channel_col].tolist())
@@ -196,8 +249,8 @@ class RwMarkov():
 
 
     def make_markov(self):
-
         """Final method to make markov-chain attribution model"""
+
         # Обработанные данные
         df_prep = self.markov_prep()
         # Все переходы
