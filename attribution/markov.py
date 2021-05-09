@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from collections import defaultdict
 from tools.exceptions import MissInputData
+from tqdm import tqdm
 
 
 class RwMarkov:
@@ -10,7 +11,7 @@ class RwMarkov:
     """
 
     def __init__(self, df, channel_col, conv_col, id_col=None, order_col=None, conv_cnt=None, cm_full_path=False,
-                 verbose=0):
+                 verbose=0, unique_channels=None):
         """
         :param df: (pd.DataFrame), dataframe with paths You can find expected input data format here:
         https://github.com/realweb-msk/RwAttribution#readme
@@ -25,10 +26,19 @@ class RwMarkov:
         :param cm_full_path: (bool, optional, default=False), whether to preprocess and compute transitions
          based on Campaign Manager Full paths report. You can find an example of SQL query in sql.cm_full_path_prep
         :param verbose: (int), when verbose > 1 print progress
+        :param unique_channels: (iterable), list(or other iterable) of channels in paths. Must be not None when
+         cm_full_path=True
         """
         self.df = df
         self.channel_col = channel_col
-        self.unique_channels = np.append(df[channel_col].unique(), ['Start', 'Conversion', 'Null'])
+        if cm_full_path:
+            if unique_channels is not None:
+                self.unique_channels = unique_channels
+            else:
+                print("When cm_full_path=True, unique_channels must be not None")
+                raise MissInputData
+        else:
+            self.unique_channels = np.append(df[channel_col].unique(), ['Start', 'Conversion', 'Null'])
         self.id_col = id_col
         self.order_col = order_col
         self.conv_col = conv_col
@@ -54,7 +64,7 @@ class RwMarkov:
 
             channel_col = self.channel_col
             conv_col = self.conv_col
-            df_path = self.df
+            df_path = self.df.copy()
 
             df_path[channel_col] = df_path[channel_col].apply(lambda x: x.split(sep))
 
@@ -86,8 +96,8 @@ class RwMarkov:
             df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))
             df_path.query(f'{conv_col} == 1')[channel_col].apply(lambda x: x.append('Conversion'))
 
-            if self.verbose > 0:
-                print("markov_prep is done")
+        if self.verbose > 0:
+            print("markov_prep is done")
 
         return df_path
 
@@ -108,7 +118,7 @@ class RwMarkov:
 
         # Ugly cycles
         # TODO: Try to optimize somehow
-        for state in unique_channels:
+        for state in tqdm(unique_channels):
             if state not in ('Conversion', 'Null'):
                 # Делим на предобработку для обычных данных и для данных из cm_full_path
                 if self.cm_full_path:
@@ -146,7 +156,7 @@ class RwMarkov:
         trans_prob = defaultdict(dict)
 
         # TODO: try to optimize
-        for state in unique_channels:
+        for state in tqdm(unique_channels):
             if state not in ['Conversion', 'Null']:
                 cnt = 0
                 index = [i for i, s in enumerate(trans_dict) if state + '>' in s]
