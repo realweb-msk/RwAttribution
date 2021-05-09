@@ -1,7 +1,9 @@
 import plotly.graph_objs as go
+from plotly.io import write_html
+from tools.exceptions import MissInputData
 
-
-def compare(attributions, channel_col, weight_col, names=None, orientation=None, width=None, height=None):
+def compare(attributions, channel_col, weight_col, names=None, orientation=None, width=None, height=None,
+            to_html=False, path=None):
 
     names = [i for i in range(len(attributions))] if names is None else names
     orientation = 'h' if orientation is None else orientation
@@ -23,5 +25,11 @@ def compare(attributions, channel_col, weight_col, names=None, orientation=None,
 
     fig.show()
 
+    if to_html:
+        if path is not None:
+            write_html(fig, path)
+        else:
+            print('Please pass path where to save htm file')
+            raise MissInputData
     return
 
