@@ -1,3 +1,4 @@
+from collections import Counter
 import pandas as pd
 import plotly.express as px
 from tools.prep import dict_to_frame
@@ -120,6 +121,35 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
         fig = px.bar(y = d_.keys(), x=d_.values(), title='Uniform model', orientation='h')
         fig.update_xaxes(title_text = 'Доля от всех конверсий')
         fig.update_yaxes(title_text = 'Группа каналов')
+        fig.show()
+
+    if as_frame == True:
+        if keys_col_name is not None and values_col_name is not None:
+            return dict_to_frame(d, keys_col_name, values_col_name)
+        else:
+            keys_col_name = path_col + '_new'
+            values_col_name = conv_col
+            return dict_to_frame(d, keys_col_name, values_col_name)
+
+    return d
+
+
+def linear(df, path_col='path', conv_col='conversion', plot=True, as_frame=False,
+            keys_col_name=None, values_col_name=None, sep='^'):
+
+    d = {}
+    for row in df.iterrows():
+        cnt = Counter(row[1][path_col].split(sep)).keys()
+        for channel in cnt:
+            if channel in d.keys():
+                d[channel] += row[1][conv_col] / len(cnt)
+            else:
+                d[channel] = row[1][conv_col] / len(cnt)
+
+    if plot:
+        fig = px.bar(y=d.keys(), x=d.values(), title='Linear model', orientation='h')
+        fig.update_xaxes(title_text='Доля от всех конверсий')
+        fig.update_yaxes(title_text='Группа каналов')
         fig.show()
 
     if as_frame == True:
