@@ -130,6 +130,8 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
             values_col_name = conv_col
             return dict_to_frame(d, keys_col_name, values_col_name)
 
+    return d
+
 
 def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_col='conversion', sep='^',
                as_frame=False, plot=True, recent=True, keys_col_name=None, values_col_name=None):

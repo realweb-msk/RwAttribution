@@ -1,9 +1,11 @@
+from collections import Counter
 import pandas as pd
 from tools.exceptions import MissInputData
 
 
 def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=True, conv_col=None,
-              full_data=True, click_only=False, view_only=False, sort=False, verbose=0, sep='^'):
+              full_data=True, click_only=False, view_only=False, sort=False, verbose=0, sep='^',
+              drop_direct=False, direct_name=None):
 
     """
     Function that does initial data preprocessing. You can find expected input data format here:
@@ -24,8 +26,12 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
     :param click_only: (bool, optional, default=False), whether to return click_data only
     :param view_only: (bool, optional, default=False), whether to return impression_data only
     :param sort: (bool, optional, default=True)
-    :param verbose:
-    :param sep:
+    :param verbose: (int, optional, default=0), if greater than zero prints progress at runtime
+    :param sep: (str, optional, default='^'), character that will separate channels in paths after grouping
+    :param drop_direct: (bool, optional, default=False), if True then drops "Direct" from touchpoints with any other
+    touchpoint
+    :param direct_name: (str, optional, default=None), name of "Direct" touchpoint in your paths,
+     must be not None when null_direct=True
     :return:
     """
 
@@ -90,21 +96,47 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
 
         return df_gr
 
+    # Дропает из группированной цепочки прямой траффик если он не единственный
+    def dropper(path, sep=sep, direct_name=direct_name):
+        replace_strs = [sep+direct_name, direct_name+sep]
+        if direct_name in path and len(Counter(path.split(sep))) > 1:
+            new_path = str.replace(path, replace_strs[0], '')
+            if new_path == path:
+                new_path = str.replace(path, replace_strs[1], '')
+
+            return new_path
+
+        return path
+
+
     if full_data:
         full_gr = sort_and_group(full, sort)
         click_gr = sort_and_group(click, sort)
         view_gr = sort_and_group(view, sort)
 
+        if drop_direct:
+            full_gr['path'] = full_gr['path'].apply(lambda x: dropper(x))
+            click_gr['path'] = click_gr['path'].apply(lambda x: dropper(x))
+            view_gr['path'] = view_gr['path'].apply(lambda x: dropper(x))
+
+            full_gr = full_gr.groupby('path', as_index=False).agg({'conversion': 'sum'})
+            click_gr = click_gr.groupby('path', as_index=False).agg({'conversion': 'sum'})
+            view_gr = view_gr.groupby('path', as_index=False).agg({'conversion': 'sum'})
+
         return full_gr, click_gr, view_gr
 
     if click_only:
         click_gr = sort_and_group(click, sort)
-
+        if drop_direct:
+            click_gr['path'] = click_gr['path'].apply(lambda x: dropper(x))
+            click_gr = click_gr.groupby('path', as_index=False).agg({'conversion': 'sum'})
         return click_gr
 
     if view_only:
         view_gr = sort_and_group(view, sort)
-
+        if drop_direct:
+            view_gr['path'] = view_gr['path'].apply(lambda x: dropper(x))
+            view_gr = view_gr.groupby('path', as_index=False).agg({'conversion': 'sum'})
         return view_gr
 
 
