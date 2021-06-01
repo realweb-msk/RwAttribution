@@ -147,7 +147,8 @@ def linear(df, path_col='path', conv_col='conversion', plot=True, as_frame=False
                 d[channel] = row[1][conv_col] / len(cnt)
 
     if plot:
-        fig = px.bar(y=d.keys(), x=d.values(), title='Linear model', orientation='h')
+        d_ = {k: v/ sum(d.values()) for k, v in d.items()}
+        fig = px.bar(y=d_.keys(), x=d_.values(), title='Linear model', orientation='h')
         fig.update_xaxes(title_text='Доля от всех конверсий')
         fig.update_yaxes(title_text='Группа каналов')
         fig.show()
@@ -181,7 +182,7 @@ def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_c
     - dictionary with channels an their attribution score (not-normalized)
     """
 
-    d = {channel : 0 for channel in unique_channels}
+    d = {channel: 0 for channel in unique_channels}
     for path, path_len, conversions in zip(df[path_col], df[path_len], df[conv_col]):
         L = path_len
 

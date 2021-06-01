@@ -33,7 +33,7 @@ class RwMarkov:
         self.channel_col = channel_col
         if cm_full_path:
             if unique_channels is not None:
-                self.unique_channels = unique_channels
+                self.unique_channels = np.append(unique_channels, ['Start', 'Conversion', 'Null'])
             else:
                 print("When cm_full_path=True, unique_channels must be not None")
                 raise MissInputData
@@ -207,10 +207,14 @@ class RwMarkov:
         :param prep: result of self.markov_prep method
         """
 
-        total_conversions = sum(path.count('Conversion') for path in prep[self.channel_col].tolist())
-
         try:
-            return total_conversions / len(prep[self.id_col])
+            if not self.cm_full_path:
+                total_conversions = sum(path.count('Conversion') for path in prep[self.channel_col].tolist())
+                return total_conversions / len(prep[self.id_col])
+
+            total_conversions = prep[prep[self.conv_col] == 1][self.conv_cnt].sum()
+            return total_conversions / prep[self.conv_cnt].sum()
+
         except ZeroDivisionError:
             print("Input data is empty! Division by zero error")
 
