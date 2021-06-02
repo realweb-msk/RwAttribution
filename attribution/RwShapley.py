@@ -224,14 +224,34 @@ def shap_and_freq(sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
     """
 
     freq_c, freq_i = FIC_data
+    try:
+        if len(freq_c) > 0:
+            click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
+        else:
+            click = pd.DataFrame()
+        if len(freq_i) > 0:
+            view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
+        else:
+            view = pd.DataFrame()
 
-    click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
-    view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
+        if len(freq_c) > 0 and len(freq_i) > 0:
+            total = (click
+                     .merge(view, how='outer', left_on=shap_on, right_on=shap_on)
+                     .fillna(0)
+                     )
+        elif len(freq_c) > 0 and len(freq_i) == 0:
+            click['total_weight'] = click['weight'] * click['FIC']
+            click['total_weight'] = click['total_weight'] / click['total_weight'].sum()
+            return click[[shap_on, 'total_weight']]
 
-    total = (click
-             .merge(view, how='outer', left_on=shap_on, right_on = shap_on)
-             .fillna(0)
-             )
+        elif len(freq_c) == 0 and len(freq_i) > 0:
+            view['total_weight'] = view['weight'] * view['FIC']
+            view['total_weight'] = view['total_weight'] / view['total_weight'].sum()
+            return view[[shap_on, 'total_weight']]
+
+    except AttributeError:
+        print('Input has incorrect data type')
+        raise
 
     total['total_weight'] = total['weight_x'] * total['FIC_x'] + total['weight_y'] * total['FIC_y']
 
