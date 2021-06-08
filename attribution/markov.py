@@ -29,6 +29,10 @@ class RwMarkov:
         :param verbose: (int), when verbose > 1 print progress
         :param unique_channels: (iterable), list(or other iterable) of channels in paths. Must be not None when
          cm_full_path=True
+        :param drop_direct: (bool, optional, default=False), if True then drops "Direct" from touchpoints with any other
+            touchpoint
+        :param direct_name: (str, optional, default=None), name of "Direct" touchpoint in your paths,
+            must be not None when null_direct=True
         """
         self.df = df
         self.channel_col = channel_col
@@ -47,16 +51,30 @@ class RwMarkov:
         self.cm_full_path = cm_full_path
         self.verbose = verbose
         self.drop_direct = drop_direct
-        self.direct_name = direct_name
+        if self.drop_direct:
+            if self.direct_name is None:
+                print("When drop_direct=True, direct_name must be not None")
+                raise MissInputData
+            else:
+                self.direct_name = direct_name
 
     @staticmethod
-    def dropper(path, sep, direct_name):
-        replace_strs = [sep+direct_name, direct_name+sep]
-        if direct_name in path and len(Counter(path.split(sep))) > 1:
-            new_path = str.replace(path, replace_strs[0], '')
-            new_path = str.replace(new_path, replace_strs[1], '')
+    def dropper(path, sep, direct_name, mode='string'):
 
-            return new_path
+        if mode == 'string':
+            replace_strs = [sep+direct_name, direct_name+sep]
+            if direct_name in path and len(Counter(path.split(sep))) > 1:
+                new_path = str.replace(path, replace_strs[0], '')
+                new_path = str.replace(new_path, replace_strs[1], '')
+
+                return new_path
+
+        elif mode == 'list':
+            if direct_name in path and len(Counter(path)) > 1:
+                for i in range(Counter(path)[direct_name]):
+                    path.remove(direct_name)
+
+                return path
 
         return path
 
@@ -104,11 +122,15 @@ class RwMarkov:
 
             # Нужно для тестовых данных
             df['interaction_number'] = df.groupby(id_col).cumcount() + 1
+            # return df
             df_path = df.groupby(id_col)[channel_col].aggregate(lambda x: x.tolist()).reset_index()
 
             df_last_int = df.drop_duplicates(id_col, keep='last')[[id_col, conv_col]]
             df_path = df_path.merge(df_last_int, how='left',
                                                    left_on=id_col, right_on = id_col)
+
+            if self.drop_direct:
+                df_path[channel_col].apply(lambda x: self.dropper(x, sep, self.direct_name, mode='list'))
 
             # Добавим начало и конец цепочки
             df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
