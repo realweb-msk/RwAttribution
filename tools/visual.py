@@ -2,6 +2,7 @@ import plotly.graph_objs as go
 from plotly.io import write_html
 from tools.exceptions import MissInputData
 
+
 def compare(attributions, channel_col, weight_col, names=None, orientation=None, width=None, height=None,
             to_html=False, path=None):
 

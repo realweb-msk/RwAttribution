@@ -1,3 +1,4 @@
+from collections import Counter
 import pandas as pd
 import numpy as np
 from collections import defaultdict
@@ -11,7 +12,7 @@ class RwMarkov:
     """
 
     def __init__(self, df, channel_col, conv_col, id_col=None, order_col=None, conv_cnt=None, cm_full_path=False,
-                 verbose=0, unique_channels=None):
+                 verbose=0, unique_channels=None, drop_direct=False, direct_name=None):
         """
         :param df: (pd.DataFrame), dataframe with paths You can find expected input data format here:
         https://github.com/realweb-msk/RwAttribution#readme
@@ -45,7 +46,19 @@ class RwMarkov:
         self.conv_cnt = conv_cnt
         self.cm_full_path = cm_full_path
         self.verbose = verbose
+        self.drop_direct = drop_direct
+        self.direct_name = direct_name
 
+    @staticmethod
+    def dropper(path, sep, direct_name):
+        replace_strs = [sep+direct_name, direct_name+sep]
+        if direct_name in path and len(Counter(path.split(sep))) > 1:
+            new_path = str.replace(path, replace_strs[0], '')
+            new_path = str.replace(new_path, replace_strs[1], '')
+
+            return new_path
+
+        return path
 
     def markov_prep(self, sep="^"):
         """
@@ -66,7 +79,13 @@ class RwMarkov:
             conv_col = self.conv_col
             df_path = self.df.copy()
 
+            if self.drop_direct:
+                print('was here')
+                df_path[channel_col] = df_path[channel_col].apply(lambda x: self.dropper(x, sep, self.direct_name))
+                return df_path
             df_path[channel_col] = df_path[channel_col].apply(lambda x: x.split(sep))
+
+
 
             df_path[channel_col].apply(lambda x: x.insert(0, "Start"))
             df_path.query(f'{conv_col} == 0')[channel_col].apply(lambda x: x.append('Null'))

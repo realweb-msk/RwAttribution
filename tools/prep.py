@@ -101,8 +101,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
         replace_strs = [sep+direct_name, direct_name+sep]
         if direct_name in path and len(Counter(path.split(sep))) > 1:
             new_path = str.replace(path, replace_strs[0], '')
-            if new_path == path:
-                new_path = str.replace(path, replace_strs[1], '')
+            new_path = str.replace(new_path, replace_strs[1], '')
 
             return new_path
 
