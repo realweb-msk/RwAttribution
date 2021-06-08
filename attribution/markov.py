@@ -52,7 +52,7 @@ class RwMarkov:
         self.verbose = verbose
         self.drop_direct = drop_direct
         if self.drop_direct:
-            if self.direct_name is None:
+            if direct_name is None:
                 print("When drop_direct=True, direct_name must be not None")
                 raise MissInputData
             else:

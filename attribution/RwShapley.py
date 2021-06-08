@@ -100,107 +100,61 @@ class RwShap():
         #         path = k.split(self.sep)
         #         for k_, w in fic.items():
 
-
         if channels is None:
             df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split(self.sep)) == 1 else np.nan)
 
-        # В наших цепочках каналы могут повторяться
         if with_repetitions:
             # Максимальная длина цепочки должна быть < число каналов
             if len(channels) <= max_path_len:
                 return "Maximum path length can't be larger than unique channels amnt"
 
-            v_values = {}
+        v_values = {}
 
+        if with_repetitions:
             for A in self.comb_full(channels, max_path_len):
                 v_values[self.sep.join(A)] = self.impact(A, c_values, with_repetitions)
 
-            n = len(channels)
-            shapley_values = defaultdict(int)
-
-            for channel in channels:
-                for A in v_values.keys():
-
-                    if channel not in A.split(self.sep):
-
-                        cardinal_A = len(A.split(self.sep))
-                        A_with_channel = A.split(self.sep)
-
-                        if cardinal_A < max_path_len:
-                            A_with_channel.append(channel)
-
-                        A_with_channel = self.sep.join(A_with_channel)
-
-                        # Weight = |S|!(n-|S|-1)!/n!
-                        weight = (np.math.factorial(cardinal_A) *
-                                  np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
-
-                        # Marginal contribution = v(S U {i})-v(S)
-                        contrib = (v_values[A_with_channel] - v_values[A])
-                        shapley_values[channel] += weight * contrib
-
-                # Add the term corresponding to the empty set
-                shapley_values[channel] += v_values[channel] / n
-
-            sh_df = (
-                pd.DataFrame(data=shapley_values.values(), index=shapley_values.keys())
-                .reset_index()
-                # TODO : change index : 'channel_group' to smth general
-                .rename(columns={'index': 'channel_group', 0: 'weight'})
-                    )
-            sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
-
-            if plot:
-                fig = px.bar(y=sh_df['channel_group'], x=sh_df['weight'], title='Shapley value model', orientation='h')
-                fig.update_xaxes(title_text='Доля от всех конверсий')
-                fig.update_yaxes(title_text='Группа каналов')
-                fig.show()
-
-            return sh_df
-
-        # Берем только уникальные каналы, причем последовательность каналов
-        # Должна быть отсортирована в алфавитном порядке
         else:
-            v_values = {}
-
             for A in self.comb(channels):
                 v_values[self.sep.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
 
-            n = len(channels)
-            shapley_values = defaultdict(int)
 
+        n = len(channels)
+        shapley_values = defaultdict(int)
 
-            for channel in channels:
-                for A in v_values.keys():
+        for channel in channels:
+            for A in v_values.keys():
 
-                    if channel not in A.split(self.sep):
+                if channel not in A.split(self.sep):
 
-                        cardinal_A = len(A.split(self.sep))
-                        A_with_channel = A.split(self.sep)
-                        A_with_channel = self.sep.join(sorted(A_with_channel))
+                    cardinal_A = len(A.split(self.sep))
+                    A_with_channel = A.split(self.sep)
 
-                        # Weight = |S|!(n-|S|-1)!/n!
-                        weight = (np.math.factorial(cardinal_A) *
-                                  np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
+                    if with_repetitions and cardinal_A < max_path_len:
+                        A_with_channel.append(channel)
 
-                        # Marginal contribution = v(S U {i})-v(S)
-                        contrib = (v_values[A_with_channel] - v_values[A])
-                        shapley_values[channel] += weight * contrib
+                    A_with_channel = self.sep.join(A_with_channel)
 
-                # Add the term corresponding to the empty set
-                shapley_values[channel] += v_values[channel] / n
+                    # Weight = |S|!(n-|S|-1)!/n!
+                    weight = (np.math.factorial(cardinal_A) *
+                              np.math.factorial(n-cardinal_A - 1) / np.math.factorial(n))
 
-            sh_df = (
-                pd.DataFrame(data=shapley_values.values(), index=shapley_values.keys())
-                .reset_index()
-                # TODO : change index : 'channel_group' to smth general
-                .rename(columns={'index': 'channel_group', 0: 'weight'})
-                    )
+                    # Marginal contribution = v(S U {i})-v(S)
+                    contrib = (v_values[A_with_channel] - v_values[A])
+                    shapley_values[channel] += weight * contrib
 
-            sh_df['weight'] = sh_df['weight'] / sh_df['weight'].sum()
+            # Add the term corresponding to the empty set
+            shapley_values[channel] += v_values[channel] / n
 
-            return sh_df
+        sh_df = (
+            pd.DataFrame(data=shapley_values.values(), index=shapley_values.keys())
+            .reset_index()
+            # TODO : change index : 'channel_group' to smth general
+            .rename(columns={'index': 'channel_group', 0: 'weight'})
+                )
+        sh_df['weight_rel'] = sh_df['weight'] / sh_df['weight'].sum()
 
+        return sh_df
 
 def shap_and_freq(sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
     """
