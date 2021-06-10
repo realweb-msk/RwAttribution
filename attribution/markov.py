@@ -69,6 +69,8 @@ class RwMarkov:
 
                 return new_path
 
+            return path
+
         elif mode == 'list':
             if direct_name in path and len(Counter(path)) > 1:
                 for i in range(Counter(path)[direct_name]):
@@ -98,9 +100,8 @@ class RwMarkov:
             df_path = self.df.copy()
 
             if self.drop_direct:
-                print('was here')
                 df_path[channel_col] = df_path[channel_col].apply(lambda x: self.dropper(x, sep, self.direct_name))
-                return df_path
+
             df_path[channel_col] = df_path[channel_col].apply(lambda x: x.split(sep))
 
 
