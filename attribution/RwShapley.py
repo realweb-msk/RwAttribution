@@ -2,6 +2,7 @@ from itertools import permutations, combinations, product
 import numpy as np
 from collections import defaultdict
 import pandas as pd
+from tools.exceptions import MissInputData
 import plotly.express as px
 
 
@@ -156,62 +157,85 @@ class RwShap():
 
         return sh_df
 
-def shap_and_freq(sh_clicks, sh_impr, FIC_data, FIC_on, shap_on):
+
+def shap_and_freq(FIC_data, FIC_on, shap_on, sh_clicks=None, sh_impr=None, sh_total=None):
     """
     Combines FIC and Shapley Value attribution
 
-    :param sh_clicks: (pd.DataFrame, optional, default=None), if separated=True must be specified, result
-    of tools.prep.compute_FIC for ONLY "Click" interactions
-
-    :param sh_impr: (pd.DataFrame, optional, default=None), if separated=True must be specified, result
-    of tools.prep.compute_FIC for ONLY "Impression" interactions
-
-    :param FIC_data: (tuple of pandas.DataFrames), result of tools.prep.compute_FIC, dataframe with FIC for each channel
-    for clicks and impressions
+    :param FIC_data: (pandas.DataFrame or tuple of pandas.DataFrames), result of tools.prep.compute_FIC, dataframe with
+     FIC for each channel for clicks and impressions or for all interaction types
 
     :param FIC_on: (str), name of column in FIC DataFrame to merge with shapley data
 
     :param shap_on: (str), name of column in sh_data DataFrame to merge with shapley data
 
+    :param sh_clicks: (pd.DataFrame, optional, default=None), if FIC_data is tuple with FIC for both impressions and
+    clicks data, must be not None, result of tools.prep.compute_FIC for ONLY "Click" interactions
+
+    :param sh_impr: (pd.DataFrame, optional, default=None), if FIC_data is tuple with FIC for both impressions and click
+    data, must be not None, result of tools.prep.compute_FIC for ONLY "Impression" interactions
+
+    :param sh_total: (pd.DataFrame, optional, default=None), if FIC_data is pd.DataFrame with FIC for total data,
+    must be not None
+
 
     :return:
     """
 
-    freq_c, freq_i = FIC_data
-    try:
-        if len(freq_c) > 0:
-            click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
-        else:
-            click = pd.DataFrame()
-        if len(freq_i) > 0:
-            view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
-        else:
-            view = pd.DataFrame()
+    if isinstance(FIC_data, tuple):
+        if sh_clicks is None or sh_impr is None:
+            raise MissInputData("When clicks and impressions FIC are provided, sh_clicks and sh_impr must be not None")
+        freq_c, freq_i = FIC_data
 
-        if len(freq_c) > 0 and len(freq_i) > 0:
-            total = (click
-                     .merge(view, how='outer', left_on=shap_on, right_on=shap_on)
-                     .fillna(0)
-                     )
-        elif len(freq_c) > 0 and len(freq_i) == 0:
-            click['total_weight'] = click['weight'] * click['FIC']
-            click['total_weight'] = click['total_weight'] / click['total_weight'].sum()
-            return click[[shap_on, 'total_weight']]
+        try:
+            if len(freq_c) > 0:
+                click = sh_clicks.merge(freq_c, left_on=shap_on, right_on=FIC_on)
+            else:
+                click = pd.DataFrame()
+            if len(freq_i) > 0:
+                view = sh_impr.merge(freq_i, left_on=shap_on, right_on=FIC_on)
+            else:
+                view = pd.DataFrame()
 
-        elif len(freq_c) == 0 and len(freq_i) > 0:
-            view['total_weight'] = view['weight'] * view['FIC']
-            view['total_weight'] = view['total_weight'] / view['total_weight'].sum()
-            return view[[shap_on, 'total_weight']]
+            if len(freq_c) > 0 and len(freq_i) > 0:
+                total = (click
+                         .merge(view, how='outer', left_on=shap_on, right_on=shap_on)
+                         .fillna(0)
+                         )
 
-    except AttributeError:
-        print('Input has incorrect data type')
-        raise
+            elif len(freq_c) > 0 and len(freq_i) == 0:
+                click['total_weight'] = click['weight'] * click['FIC']
+                click['total_weight'] = click['total_weight'] / click['total_weight'].sum()
+                return click[[shap_on, 'total_weight']]
 
-    total['total_weight'] = total['weight_x'] * total['FIC_x'] + total['weight_y'] * total['FIC_y']
+            elif len(freq_c) == 0 and len(freq_i) > 0:
+                view['total_weight'] = view['weight'] * view['FIC']
+                view['total_weight'] = view['total_weight'] / view['total_weight'].sum()
+                return view[[shap_on, 'total_weight']]
 
-    total['total_weight'] = total['total_weight'] / total['total_weight'].sum()
+        except AttributeError:
+            print('Input has incorrect data type')
+            raise
 
-    return total[[shap_on, 'total_weight']]
+        total['total_weight'] = total['weight_x'] * total['FIC_x'] + total['weight_y'] * total['FIC_y']
+        total['total_weight'] = total['total_weight'] / total['total_weight'].sum()
+
+        return total[[shap_on, 'total_weight']]
+
+    elif isinstance(FIC_data, pd.DataFrame):
+        if sh_total is None:
+            raise MissInputData("When full FIC is provided, sh_total must be not None")
+
+        total = sh_total.merge(FIC_data, left_on=shap_on, right_on=FIC_on)
+        total['total_weight'] = total['weight'] * total['FIC']
+        total['total_weight'] = total['total_weight'] / total['total_weight'].sum()
+        return total[[shap_on, 'total_weight']]
+
+
+
+
+
+
 
 
 

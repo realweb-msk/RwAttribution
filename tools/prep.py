@@ -157,7 +157,7 @@ def dict_to_frame(dictionary, keys_col_name, values_col_name):
 
 
 # Функция рассчета FIC
-def compute_FIC(df, int_type_col, col_to_group, order_col, id_col):
+def compute_FIC(df, int_type_col, col_to_group, order_col, id_col, devided=False):
 
     """
     Computes frequency impact coefficient (FIC)
@@ -170,23 +170,33 @@ def compute_FIC(df, int_type_col, col_to_group, order_col, id_col):
     - cnt_col (str)
     """
 
-    # clicks
-    c = df[df[int_type_col] == "Click"]
-    c = (c
-         .groupby(col_to_group, as_index = False)
-         .agg({order_col : 'count', id_col : 'nunique'})
-         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
-        )
-    c['FIC'] = c['uniq_path'] / c['total_occ']
+    if not devided:
+        # clicks
+        c = df[df[int_type_col] == "Click"]
+        c = (c
+             .groupby(col_to_group, as_index = False)
+             .agg({order_col : 'count', id_col : 'nunique'})
+             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+             )
+        c['FIC'] = c['uniq_path'] / c['total_occ']
 
 
-    # impressions
-    i = df[df[int_type_col] == "Impression"]
-    i = (i
-         .groupby(col_to_group, as_index = False)
-         .agg({order_col : 'count', id_col : 'nunique'})
-         .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
-        )
-    i['FIC'] = i['uniq_path'] / i['total_occ']
+        # impressions
+        i = df[df[int_type_col] == "Impression"]
+        i = (i
+             .groupby(col_to_group, as_index = False)
+             .agg({order_col : 'count', id_col : 'nunique'})
+             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+             )
+        i['FIC'] = i['uniq_path'] / i['total_occ']
 
-    return (c[[col_to_group, 'FIC']], i[[col_to_group, 'FIC']])
+        return c[[col_to_group, 'FIC']], i[[col_to_group, 'FIC']]
+
+    _df = (df.groupby(col_to_group, as_index = False)
+             .agg({order_col : 'count', id_col : 'nunique'})
+             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+           )
+
+    _df['FIC'] = _df['uniq_path'] / _df['total_occ']
+
+    return _df[[col_to_group, 'FIC']]
