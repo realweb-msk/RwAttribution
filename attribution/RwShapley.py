@@ -3,6 +3,7 @@ import numpy as np
 from collections import defaultdict
 import pandas as pd
 from tools.exceptions import MissInputData
+from tqdm import tqdm
 import plotly.express as px
 
 
@@ -15,13 +16,15 @@ class RwShap():
 
 
     # Считаем все возможные комбинации БЕЗ ПОВТОРОВ
-    def comb(self, l):
-        res = [list(j) for i in range(len(l)) for j in combinations(l, i+1)]
+    @staticmethod
+    def comb(l, max_path_len):
+        res = [list(j) for i in range(max_path_len) for j in combinations(l, i+1)]
         return res
 
 
     # Считаем все возможные комбинации С ПОВТОРАМИ
-    def comb_full(self, vals, max_len = None):
+    @staticmethod
+    def comb_full(vals, max_len=None):
 
         """
         Finds ALL possible combinations of set with repetitions with the specified length
@@ -116,14 +119,14 @@ class RwShap():
                 v_values[self.sep.join(A)] = self.impact(A, c_values, with_repetitions)
 
         else:
-            for A in self.comb(channels):
+            for A in self.comb(channels, max_path_len):
                 v_values[self.sep.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
 
 
         n = len(channels)
         shapley_values = defaultdict(int)
 
-        for channel in channels:
+        for channel in tqdm(channels):
             for A in v_values.keys():
 
                 if channel not in A.split(self.sep):
