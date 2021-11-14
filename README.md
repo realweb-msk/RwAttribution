@@ -58,10 +58,14 @@ markov_full, markov_cl, markov_v = prep_data(markov_data, 'channel',
                                              'cookie', 'interaction')
 markov_data.head()
 ```
+<img width="706" alt="изображение" src="https://user-images.githubusercontent.com/60659176/141696274-58c275c8-ceca-48b8-b87b-6266dbc18c90.png">
+
 Uniform атрибуция 
 ```python
 uniform_results = uniform(markov_full, markov_data['channel'].unique())
 ```
+<img width="936" alt="изображение" src="https://user-images.githubusercontent.com/60659176/141696283-cc26580c-8dd7-4074-b26b-c2011ad51158.png">
+
 Атрибуция, основанная на цепях Маркова 
 ```python
 markov = RwMarkov(markov_data, 'channel', 'conversion', 'cookie', 'time', verbose=0)
@@ -72,6 +76,7 @@ fig.update_yaxes(title_text = 'Группа каналов')
 fig.update_xaxes(title_text = 'Конверсии')
 fig.show()
 ```
+<img width="923" alt="изображение" src="https://user-images.githubusercontent.com/60659176/141696294-5b5a3a52-deee-4af2-a66f-ddd6772bd1ca.png">
 
 ## Spark
 Для больших датасетов производительности питона уже не хватает. Для обработки
