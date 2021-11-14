@@ -41,8 +41,37 @@ Default and custom attribution mode &amp; pipeline for them
 цепочки, то для этого метода в данных также должны быть цепочки, которы не 
 привели к конверсии.
 
-## Модуль tests
-В этом модуле можно найти примеры использования методов
+Пример загрузки и обработки данных:
+```python
+from tools import prep_data
+import pandas as pd
+import plotly.express as px
+from attribution import uniform
+
+markov_data = pd.read_csv('../data/attribution data.csv', sep=',')
+markov_data['interaction'] = (
+    markov_data['interaction']
+    .apply(lambda x: 'click' if x == 'conversion' else 'view'))
+
+# Data preprocessing
+markov_full, markov_cl, markov_v = prep_data(markov_data, 'channel',
+                                             'cookie', 'interaction')
+markov_data.head()
+```
+Uniform атрибуция 
+```python
+uniform_results = uniform(markov_full, markov_data['channel'].unique())
+```
+Атрибуция, основанная на цепях Маркова 
+```python
+markov = RwMarkov(markov_data, 'channel', 'conversion', 'cookie', 'time', verbose=0)
+m_res = markov.make_markov() 
+
+fig = px.bar(y = m_res.keys(), x = m_res.values(), title = 'Markov', orientation = 'h')
+fig.update_yaxes(title_text = 'Группа каналов')
+fig.update_xaxes(title_text = 'Конверсии')
+fig.show()
+```
 
 ## Spark
 Для больших датасетов производительности питона уже не хватает. Для обработки

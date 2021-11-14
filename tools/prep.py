@@ -6,7 +6,6 @@ from tools.exceptions import MissInputData
 def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_path=True, conv_col=None,
               full_data=True, click_only=False, view_only=False, sort=False, verbose=0, sep='^',
               drop_direct=False, direct_name=None):
-
     """
     Function that does initial data preprocessing. You can find expected input data format here:
     https://github.com/realweb-msk/RwAttribution#readme
@@ -35,7 +34,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
     :return:
     """
 
-    if with_null_path == False:
+    if not with_null_path:
         try:
             if conv_col is not None:
                 id_s = df.query(f"{conv_col} == 1")[client_id_col].unique()
@@ -46,27 +45,25 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
             print("When with_null_path=True, data must contain conv_col")
             raise e
 
-
     df["channel_new"] = df[channel_col] + sep
     # Собираем цепочки вместе
     if full_data:
         full = (df
-                .groupby(client_id_col, as_index = False).agg({'channel_new': 'sum'})
-                .rename(columns = {'channel_new': 'path'})
-               )
-
+                .groupby(client_id_col, as_index=False).agg({'channel_new': 'sum'})
+                .rename(columns={'channel_new': 'path'})
+                )
 
     click = (df
              .query(f'{interaction_type_col} == "Click"')
-             .groupby(client_id_col, as_index = False).agg({'channel_new': 'sum'})
-             .rename(columns = {'channel_new': 'path'})
-            )
+             .groupby(client_id_col, as_index=False).agg({'channel_new': 'sum'})
+             .rename(columns={'channel_new': 'path'})
+             )
 
     view = (df
             .query(f'{interaction_type_col} == "Impression"')
-            .groupby(client_id_col, as_index = False).agg({'channel_new': 'sum'})
+            .groupby(client_id_col, as_index=False).agg({'channel_new': 'sum'})
             .rename(columns={'channel_new': 'path'})
-           )
+            )
 
     if verbose > 0:
         print("1-st step is done")
@@ -83,9 +80,9 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
     def sort_and_group(df, sort):
         df['path'] = df['path'].apply(lambda x: x[:-1])
         df_gr = (df
-                 .groupby('path', as_index = False)
-                 .agg({client_id_col : 'nunique'})
-                 .rename(columns={client_id_col : 'conversion'})
+                 .groupby('path', as_index=False)
+                 .agg({client_id_col: 'nunique'})
+                 .rename(columns={client_id_col: 'conversion'})
                  )
         if sort:
             df_gr['path'] = df_gr['path'].apply(lambda x: sorted(x.split(sep)))
@@ -98,7 +95,7 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
 
     # Дропает из группированной цепочки прямой траффик если он не единственный
     def dropper(path, sep=sep, direct_name=direct_name):
-        replace_strs = [sep+direct_name, direct_name+sep]
+        replace_strs = [sep + direct_name, direct_name + sep]
         if direct_name in path and len(Counter(path.split(sep))) > 1:
             new_path = str.replace(path, replace_strs[0], '')
             new_path = str.replace(new_path, replace_strs[1], '')
@@ -106,7 +103,6 @@ def prep_data(df, channel_col, client_id_col, interaction_type_col, with_null_pa
             return new_path
 
         return path
-
 
     if full_data:
         full_gr = sort_and_group(full, sort)
@@ -156,45 +152,46 @@ def dict_to_frame(dictionary, keys_col_name, values_col_name):
     return df
 
 
-# Функция рассчета FIC
-def compute_FIC(df, int_type_col, col_to_group, order_col, id_col, devided=False):
-
+def compute_FIC(df, int_type_col, col_to_group, order_col, id_col, divided=False):
     """
     Computes frequency impact coefficient (FIC)
     FIC is defined as: (number of unique paths where channel appeared)
     / (number of occurences  of a channel in dataset)
 
-    Inputs:
-    - df (pandas.DataFrame)
-    - int_type_col (str)
-    - cnt_col (str)
+    :param df: (pandas.DataFrame) DataFrame with raw touchpoint interactions
+    :param int_type_col: (str), name of the column with one of the following interaction_types:
+    "Click", "Impression".
+    :param col_to_group: (str), name of column to aggregate data
+    :param order_col: (order_col), name of column to order by
+    :param id_col: (id_col), name of column with some ID. For further details check out
+    https://github.com/realweb-msk/RwAttribution#readme
+    :param divided: (bool, optional default=False)
     """
 
-    if not devided:
+    if not divided:
         # clicks
         c = df[df[int_type_col] == "Click"]
         c = (c
-             .groupby(col_to_group, as_index = False)
-             .agg({order_col : 'count', id_col : 'nunique'})
-             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+             .groupby(col_to_group, as_index=False)
+             .agg({order_col: 'count', id_col: 'nunique'})
+             .rename(columns={order_col: 'total_occ', id_col: 'uniq_path'})
              )
         c['FIC'] = c['uniq_path'] / c['total_occ']
-
 
         # impressions
         i = df[df[int_type_col] == "Impression"]
         i = (i
-             .groupby(col_to_group, as_index = False)
-             .agg({order_col : 'count', id_col : 'nunique'})
-             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+             .groupby(col_to_group, as_index=False)
+             .agg({order_col: 'count', id_col: 'nunique'})
+             .rename(columns={order_col: 'total_occ', id_col: 'uniq_path'})
              )
         i['FIC'] = i['uniq_path'] / i['total_occ']
 
         return c[[col_to_group, 'FIC']], i[[col_to_group, 'FIC']]
 
-    _df = (df.groupby(col_to_group, as_index = False)
-             .agg({order_col : 'count', id_col : 'nunique'})
-             .rename(columns = {order_col : 'total_occ', id_col: 'uniq_path'})
+    _df = (df.groupby(col_to_group, as_index=False)
+           .agg({order_col: 'count', id_col: 'nunique'})
+           .rename(columns={order_col: 'total_occ', id_col: 'uniq_path'})
            )
 
     _df['FIC'] = _df['uniq_path'] / _df['total_occ']

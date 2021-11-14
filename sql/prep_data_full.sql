@@ -1,7 +1,16 @@
+-- QUERY TO PREPARE PATH DATA VIA SQL IN YOUR FAVOURITE DB
+-- GOOGLE BIGQUERY STANDARD SQL
+
 WITH id_with_conv AS(
 SELECT 
 DISTINCT(client_id)
-FROM `august-monument-187809.Realweb.4_attribution_table` 
+-- PLEASE NOTE THAT attribution_table SHOULD HAVE FOLLOWING SCHEMA:
+-- id (clientID, cookie, etc)
+-- conversion_flag
+-- touchpoint name(channel, sourceMedium, etc.)
+-- order_col
+-- FOR FURTHER DETAILS PLEASE VISIT https://github.com/realweb-msk/RwAttribution#Readme
+FROM `projectID.datasetID.attribution_table`
 WHERE session_with_conversion = True
 ),
 
@@ -9,7 +18,7 @@ path_table AS(
 SELECT
 client_id,
 STRING_AGG(channel_group ORDER BY visit_start_time) AS path
-FROM `august-monument-187809.Realweb.4_attribution_table` 
+FROM `projectID.datasetID.attribution_table`
 WHERE client_id IN (SELECT * FROM id_with_conv)
 GROUP BY client_id
 ORDER BY client_id
@@ -26,3 +35,4 @@ ORDER BY conv desc
 
 SELECT * 
 FROM total_table
+;

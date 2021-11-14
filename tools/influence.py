@@ -5,15 +5,18 @@ from gensim.models import word2vec
 
 def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None):
     """
-    Method for calculation how changing cost, reach, etc. in some channels will affect other
+    Function for calculation how changing cost, reach, etc. in some channels will affect other
 
     :param channel_type: (dict), Dictionary where each channel is matched with one of the following types:
-    "FREE", "PAID", "RETARGETING", "MOBILE"
+    "FREE", "PAID CONTEXT", "RETARGETING", "MOBILE", "PAID SOCIALS", "PAID DISPLAY", "OTHER"
 
          "FREE": free advertisement i.e. organic, direct, etc.
          "RETARGETING": paid retargeting
          "MOBILE": paid mobile ads
-         "PAID": all other paid channels
+         "PAID CONTEXT": paid context ads
+         "PAID SOCIALS": paid social networks
+         "PAID DISPlAY": paid display ads
+         "OTHER": other ad types
 
     :param cost_dict: (dict), Dictionary with non-FREE channels and their initial cost
     (or some other changing parameter, e.g. reach)
@@ -55,24 +58,78 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
     sum_paid_old = 0
 
     try:
+
         if mode not in ('fixed', 'linear', 'non-linear', 'weighted_free', 'weighted_full'):
-            raise NonListedValue
+            raise ValueError("mode must be one of 'fixed', 'linear', 'non-linear', 'weighted_free', 'weighted_full',",
+                             f"got {mode}")
 
         for channel in channels:
             # free channels do not change at all
-                if mode == 'fixed':
-                    if channel_type[channel] != "FREE":
-                        new_cost_dict[channel] = new_cost[channel]
-                        sum_paid_old += cost_dict[channel]
-                        sum_paid_new += cost_dict[channel]
-                        n_paid += 1
+            if mode == 'fixed':
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_old += cost_dict[channel]
+                    sum_paid_new += cost_dict[channel]
+                    n_paid += 1
 
-                    else:
-                        new_cost_dict[channel] = 0
-                        cost_dict[channel] = 0
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
 
-                if mode == 'linear':
-                    if channel_type[channel] != "FREE":
+            elif mode == 'linear':
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += new_cost[channel]
+                    sum_paid_old += cost_dict[channel]
+                    n_paid += 1
+
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            elif mode == 'non-linear':
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
+                    sum_paid_old += cost_dict[channel]
+                    n_paid += 1
+
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            if mode == 'weighted_free':
+                if weights is None:
+                    raise MissInputData
+
+                if channel_type[channel] != "FREE":
+                    new_cost_dict[channel] = new_cost[channel]
+                    sum_paid_new += new_cost[channel] * weights[channel]
+                    sum_paid_old += cost_dict[channel]
+                    n_paid += 1
+
+                else:
+                    new_cost_dict[channel] = 0
+                    cost_dict[channel] = 0
+
+            elif mode == 'weighted_full':
+                if weights is None:
+                    raise MissInputData
+                    # In this case input wights should be in format of dict which values are also dicts
+                if channel in weights:
+                    for k, v in weights.items():
+                        # In case FREE channel is in weights dictionary
+                        try:
+                            new_cost_dict[k] = cost_dict[k]
+                        finally:
+                            new_cost_dict[k] = 0
+
+                        for k_, v_ in v.items():
+                            # If weight is negative and cost are decreasing, we assume there is no change
+                            if not (v_ < 0 and new_cost[k_] < cost_dict[k_]):
+                                new_cost_dict[k] += (new_cost[k_] - cost_dict[k_]) * v_
+                else:
+                    if channel_type[channel] != 'FREE':
                         new_cost_dict[channel] = new_cost[channel]
                         sum_paid_new += new_cost[channel]
                         sum_paid_old += cost_dict[channel]
@@ -81,58 +138,6 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
                     else:
                         new_cost_dict[channel] = 0
                         cost_dict[channel] = 0
-
-                if mode == 'non-linear':
-                    if channel_type[channel] != "FREE":
-                        new_cost_dict[channel] = new_cost[channel]
-                        sum_paid_new += sigmoid((new_cost[channel] - cost_dict[channel]) / cost_dict[channel]) * cost_dict[channel]
-                        sum_paid_old += cost_dict[channel]
-                        n_paid += 1
-
-                    else:
-                        new_cost_dict[channel] = 0
-                        cost_dict[channel] = 0
-
-                if mode == 'weighted_free':
-                    if weights is None:
-                        raise MissInputData
-
-                    if channel_type[channel] != "FREE":
-                        new_cost_dict[channel] = new_cost[channel]
-                        sum_paid_new += new_cost[channel] * weights[channel]
-                        sum_paid_old += cost_dict[channel]
-                        n_paid += 1
-
-                    else:
-                        new_cost_dict[channel] = 0
-                        cost_dict[channel] = 0
-
-                if mode == 'weighted_full':
-                    if weights is None:
-                        raise MissInputData
-                    # In this case input wights should be in format of dict which values are also dicts
-                    if channel in weights:
-                        for k, v in weights.items():
-                            # In case FREE channel is in weights dictionary
-                            try:
-                                new_cost_dict[k] = cost_dict[k]
-                            finally:
-                                new_cost_dict[k] = 0
-
-                            for k_, v_ in v.items():
-                                # If weight is negative and cost are decreasing, we assume there is no change
-                                if not (v_ < 0 and new_cost[k_] < cost_dict[k_]):
-                                    new_cost_dict[k] += (new_cost[k_] - cost_dict[k_]) * v_
-                    else:
-                        if channel_type[channel] != 'FREE':
-                            new_cost_dict[channel] = new_cost[channel]
-                            sum_paid_new += new_cost[channel]
-                            sum_paid_old += cost_dict[channel]
-                            n_paid += 1
-
-                        else:
-                            new_cost_dict[channel] = 0
-                            cost_dict[channel] = 0
 
         new_cost_dict = {channel: v if v != 0 else sum_paid_new/n_paid for channel, v in new_cost_dict.items()}
         initial_cost_dict = {channel: v if v != 0 else sum_paid_old/n_paid for channel, v in cost_dict.items()}
@@ -150,35 +155,40 @@ def channels_diff(channel_type, cost_dict, new_cost, mode="fixed", weights=None)
         raise MissInputData
 
 
-def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_col='path', sep='^'):
+def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_col='path', sep='^', **kwargs):
     """
-    Идея: конверсионные цепочки это тексты, а каналы это слова. Поэтому силу схожести каналов можно определить как
-    косинусную схожесть для двух векторов, полученных при помощи эмбеддингов.
+    Обучаем эмбеддинги на основе последовательности каналов в конверсионных цепочках. Полученные вектора лежат на
+    единичной гиперсфере, поэтому схожесть каналов можно определить через косинусную меру.
 
     Функция создает эмбеддинги на основе данных цепочек, для каждого канала возвращает список наиболее схожие каналы
     с величиной косинусной схожести. Основана на либе gensim https://github.com/RaRe-Technologies/gensim
 
-    :param:
-    - corpus: pandas.DateFrame, dataframe with paths. It is recommended to use prep_data function from tools module
-
-    - unique_channels: iterable, iterable with unique channels in conversion paths
-
-    -w2v: optional, pretrained w2v model in .joblib format
-
-    - path_col: str, optional, name of column with paths
-
-    - sep: str, optional, character to separate channels in paths
-
+    :param corpus: pandas.DateFrame, dataframe with paths. It is recommended to use prep_data function from tools module
+    :param unique_channels: iterable, iterable with unique channels in conversion paths
+    :param w2v: optional, pretrained w2v.Word2Vec model
+    :param top_n: optional, number of most similar channels to return
+    :param path_col: str, optional, name of column with paths
+    :param sep: str, optional, character to separate channels in paths
     :return: similar_channels: dict, where each channel is matched with the most similar channels and score
     of this similarity. Score takes value from [-1; 1]
     """
 
     corpus['text'] = corpus[path_col].apply(lambda x: x.split(sep))
-    embedding_model = word2vec.Word2Vec(corpus['text'], vector_size=200, epochs=5, window=5, workers=4)
+    if w2v is None:
+        embedding_model = word2vec.Word2Vec(corpus['text'], **kwargs)
+
+    else:
+        try:
+            assert isinstance(w2v, word2vec.Word2Vec)
+            embedding_model = word2vec.Word2Vec.load(w2v)
+
+        except AssertionError:
+            raise AssertionError(f"w2v model must be pretrained gensim.word2vec.Word2Vec model, got {type(w2v)} obj")
+
     similar_channels = {}
 
     if top_n is None:
-        top_n = len(unique_channels)
+        top_n = len(unique_channels )
 
     for channel in unique_channels:
         similar_channels[channel] = embedding_model.wv.most_similar(channel, topn=top_n)
@@ -188,24 +198,19 @@ def embeddings_similarity(corpus, unique_channels, w2v=None, top_n=None, path_co
 
 def linear_change(df, cost_dict, new_cost, conv_col='conversion', path_col='path', sep='^'):
     """
-    Simple idea: more money we spend to some channel, more often it appears in conv paths
+    Simple idea: more money we spent on channel, more likely it will occur in conversion paths.
+    Простая идея, чем больше мы изменяем влияние (например расходуем больше денег) на какой либо канал, тем чаще
+    он появляется в конверсионных цепочках
 
-    :param:
-    - df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
-
-    - cost_dict : dict, Dictionary with unique channels and their cost
-
-    - new_cost : dict, Dictionary with new budget distribution
-
-    - conv_col: str, Name of column with conversions/number path amnt
-
-    - path_col: str, Name of column with paths
-
-    - sep: str, Character that used for separation channels in paths
+    :param df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+    :param cost_dict : dict, Dictionary with unique channels and their cost
+    :param new_cost : dict, Dictionary with new budget distribution
+    :param conv_col: str, Name of column with conversions/number path amnt
+    :param path_col: str, Name of column with paths
+    :param sep: str, Character that used for separation channels in paths
 
     :returns: df with two new columns: "prob" - probability of particular path occurs,
     conv_col+"new" - path counter with new budget distribution
-
     """
 
     channels = cost_dict.keys()
@@ -256,25 +261,17 @@ def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='pat
 
     Sigmoid has following form: 2/(1+exp(-change_rate*x))-1
 
-    :param:
-    - df : pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+    :param df: pandas.DataFrame, DataFrame with paths and their counter, it is recommended to use prep.prep_data first.
+    :param cost_dict: dict, Dictionary with unique channels and their cost
+    :param new_cost: dict, Dictionary with new budget distribution
+    :param conv_col: str (default: "conversion"), Name of column with conversions/number path amnt
+    :param path_col: str (default: "path"), Name of column with paths
+    :param sep: str, Character that used for separation channels in paths
+    :param change_rate: float, int, Parameter for sigmoid function
+    :param shift: dict (default: None), Dictionary with values from interval [-1; 1] for every channel.
+    This values indicate starting point at sigma function.
 
-    - cost_dict : dict, Dictionary with unique channels and their cost
-
-    - new_cost : dict, Dictionary with new budget distribution
-
-    - conv_col: str (default: "conversion"), Name of column with conversions/number path amnt
-
-    - path_col: str (default: "path"), Name of column with paths
-
-    - sep: str, Character that used for separation channels in paths
-
-    - change_rate: float, int, Parameter for sigmoid function
-
-    - shift: dict (default: None), Dictionary with values from interval [-1; 1] for every channel. This values indicate starting point
-    at sigma function.
-
-    :return:
+    :return: pandas.DataFrame
     """
 
     channels = cost_dict.keys()
@@ -320,13 +317,3 @@ def sigmoid_change(df, cost_dict, new_cost, conv_col='conversion', path_col='pat
     df = df[df[conv_col+'_new'] >= 0]
 
     return df
-
-
-# TODO:
-def create_new_chain():
-    """
-     Идея: мы считаем в каком месте и с какой частотой появляется канал и на основе таких данных вероятностно
-     создаем новые цепи, которые, быть может будут совпадать с имеющимися
-
-     Мб тут стоит использовать марковские цепи:
-    """

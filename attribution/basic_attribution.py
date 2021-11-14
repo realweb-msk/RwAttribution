@@ -1,5 +1,4 @@
 from collections import Counter
-import pandas as pd
 import plotly.express as px
 from tools.prep import dict_to_frame
 
@@ -7,20 +6,22 @@ from tools.prep import dict_to_frame
 def last_click(df, path_col='path', conv_col='conversion', sep='^', plot=True):
     """
     Preforms last-click attribution model
-    :param
-    - df (pd.DataFrame) : dataframe ONLY with clicks data, if prep_data was used then it is "click_gr" dataframe
-    - path_col (str, default = 'path') : name of column with path data
-    - conv_col (str, default = 'conversion') : name of column with conversion data
-    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
 
-    :returns
-    - pandas.DataFrame with channels an their attribution score (not-normalized)
+    :param df: (pd.DataFrame), dataframe ONLY with clicks data, if tools.prep_data was used then
+     it is "click_gr" dataframe
+    :param path_col: (str, optional default='path'), name of column with path data
+    :param conv_col: (str, optional default='conversion'), name of column with conversion data
+    :param sep: (str, optional default='^'), channel separator used in paths
+    :param plot: (bool, default = True), whether to plot the data. Plot will contain normalized data
+
+    :return:
+    pandas.DataFrame with channels an their attribution score (non-normalized)
     """
     df_ = df.copy()
     new_name = path_col+'_new'
     df_[new_name] = df_[path_col].apply(lambda x: x.split(sep)[-1])
 
-    plt_data = df_.groupby(new_name, as_index = False).agg({conv_col : 'sum'})
+    plt_data = df_.groupby(new_name, as_index=False).agg({conv_col : 'sum'})
     plt_data[conv_col+'_rel'] = plt_data[conv_col] / plt_data[conv_col].sum()
 
     if plot:
@@ -33,8 +34,20 @@ def last_click(df, path_col='path', conv_col='conversion', sep='^', plot=True):
 
 
 def last_non_direct_click(df, path_col='path', conv_col='conversion', sep='^', direct_name=None, plot=True):
+    """
+    Parforms LNDC Attribution model
 
-    direct_name = 'Direct' if direct_name is None else direct_name
+    :param df: (pd.DataFrame), dataframe ONLY with clicks data, if tools.prep_data was used then
+     it is "click_gr" dataframe
+    :param path_col: (str, optional default='path'), name of column with path data
+    :param conv_col: (str, optional default='conversion'), name of column with conversion data
+    :param sep: (str, optional default='^'), channel separator used in paths
+    :param direct_name: (str, optional default=None), name of direct channel in paths.
+    If not None the following transformation will be applied to paths:
+    For every path, if there are any channel but direct_name, direct_name will be deleted from path
+    :param plot: (bool, default = True), whether to plot the data. Plot will contain normalized data
+    :return:
+    """
 
     def non_direct_index(path_list, direct_name=direct_name):
         # reverse path list cause we are looking from last interaction
@@ -47,9 +60,14 @@ def last_non_direct_click(df, path_col='path', conv_col='conversion', sep='^', d
 
     new_name = path_col + '_new'
     df_ = df.copy()
-    df_[new_name] = df[path_col]\
-        .apply(lambda x: x.split(sep))\
-        .apply(lambda x: non_direct_index(x, direct_name))
+    if direct_name is not None:
+        df_[new_name] = df[path_col]\
+            .apply(lambda x: x.split(sep))\
+            .apply(lambda x: non_direct_index(x, direct_name))
+
+    else:
+        df_[new_name] = df[path_col]\
+            .apply(lambda x: x.split(sep))
 
     plt_data = df_.groupby(new_name, as_index=False).agg({conv_col: 'sum'})
 
@@ -65,11 +83,12 @@ def last_non_direct_click(df, path_col='path', conv_col='conversion', sep='^', d
 def first_click(df, path_col='path', conv_col='conversion', sep='^', plot=True):
     """
     Preforms first-click attribution model
-    :param
-    - df (pd.DataFrame) : dataframe ONLY with clicks data, if prep_data was used then it is "click_gr" dataframe
-    - path_col (str, default = 'path') : name of column with path data
-    - conv_col (str, default = 'conversion') : name of column with conversion data
-    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
+
+    :param df: (pd.DataFrame) dataframe ONLY with clicks data, if prep_data was used then it is "click_gr" dataframe
+    :param path_col: (str, optional default = 'path') name of column with path data
+    :param conv_col: (str, optional default = 'conversion') name of column with conversion data
+    :param sep: (str, optional default='^'), channel separator used in paths
+    :param plot: (bool, optional default = True) whether to plot the data. Plot will contain normalized data
 
     :returns
     - pandas.DataFrame with channels an their attribution score (not-normalized)
@@ -95,15 +114,16 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
             keys_col_name=None, values_col_name=None):
     """
     Preforms last-click attribution model
-    :param
-    - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
-    - unique_channels (iterable) : list(or other iterable) of channels in paths
-    - path_col (str, default='path') : name of column with path data
-    - conv_col (str, default='conversion') : name of column with conversion data
-    - plot (bool, default=True) : whether to plot the data. Plot will contain normalized data
-    - as_frame (bool, optional, default=False) : whether to return data as pandas.DataFrame
-    - keys_col_name (str, optional, default=None): must be specified if as_frame is set to True
-    - values_col_name (str, optional, default=None): must be specified if as_frame is set to True
+
+    :param df: (pd.DataFrame) dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    :param unique_channels: (iterable) list(or other iterable) of channels in paths
+    :param path_col: (str, default='path') name of column with path data
+    :param conv_col: (str, default='conversion') name of column with conversion data
+    :param plot: (bool, default=True) whether to plot the data. Plot will contain normalized data
+    :param as_frame: (bool, optional, default=False) whether to return data as pandas.DataFrame
+    :param keys_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param values_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    
     :returns
     - dictionary with channels an their attribution score (not-normalized) if as_frame=False
     - pandas.DataFrame with channels an their attribution score (not-normalized) if as_frame=True
@@ -113,7 +133,7 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
     for channel in unique_channels:
         df_[channel] = df_[path_col].apply(lambda x: channel in x)
 
-        d[channel] = df_[df_[channel] == True][conv_col].sum()
+        d[channel] = df_[df_[channel]][conv_col].sum()
 
     d_ = {k: v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
 
@@ -123,7 +143,7 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
         fig.update_yaxes(title_text = 'Группа каналов')
         fig.show()
 
-    if as_frame == True:
+    if as_frame:
         if keys_col_name is not None and values_col_name is not None:
             return dict_to_frame(d, keys_col_name, values_col_name)
         else:
@@ -137,6 +157,18 @@ def uniform(df, unique_channels, path_col='path', conv_col='conversion', plot=Tr
 def linear(df, path_col='path', conv_col='conversion', plot=True, as_frame=False,
             keys_col_name=None, values_col_name=None, sep='^'):
 
+    """
+    Performs linear attribution model
+
+    :param df: (pd.DataFrame) dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    :param path_col: (str, default='path') name of column with path data
+    :param conv_col: (str, default='conversion') name of column with conversion data
+    :param plot: (bool, default=True) whether to plot the data. Plot will contain normalized data
+    :param as_frame: (bool, optional, default=False) whether to return data as pandas.DataFrame
+    :param keys_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param values_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param sep: (str, optional default='^'), channel separator used in paths
+    """
     d = {}
     for row in df.iterrows():
         cnt = Counter(row[1][path_col].split(sep)).keys()
@@ -153,7 +185,7 @@ def linear(df, path_col='path', conv_col='conversion', plot=True, as_frame=False
         fig.update_yaxes(title_text='Группа каналов')
         fig.show()
 
-    if as_frame == True:
+    if as_frame:
         if keys_col_name is not None and values_col_name is not None:
             return dict_to_frame(d, keys_col_name, values_col_name)
         else:
@@ -171,12 +203,15 @@ def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_c
     when recent = True then more recent channel is more valuable
     when recent = False then less recent channel is more valuable
 
-    :param
-    - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
-    - unique_channels (iterable) : list(or other iterable) of channels in paths
-    - path_col (str, default = 'path') : name of column with path data
-    - conv_col (str, default = 'conversion') : name of column with conversion data
-    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
+    :param df: (pd.DataFrame) dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    :param unique_channels: (iterable) list(or other iterable) of channels in paths
+    :param path_col: (str, default = 'path') name of column with path data
+    :param conv_col: (str, default = 'conversion') name of column with conversion data
+    :param plot: (bool, default = True) whether to plot the data. Plot will contain normalized data
+    :param as_frame: (bool, optional, default=False) whether to return data as pandas.DataFrame
+    :param keys_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param values_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param sep: (str, optional default='^'), channel separator used in paths
 
     :returns
     - dictionary with channels an their attribution score (not-normalized)
@@ -196,14 +231,14 @@ def time_decay(df, unique_channels, path_col='path', path_len='path_len', conv_c
                 d[channel] += int(conversions / L)
                 L -= 1
 
-    if plot == True:
+    if plot:
         d_ = {k: v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
         fig = px.bar(y=d_.keys(), x=d_.values(), title='Time decay model', orientation='h')
         fig.update_xaxes(title_text='Доля от всех конверсий')
         fig.update_yaxes(title_text='Группа каналов')
         fig.show()
 
-    if as_frame == True:
+    if as_frame:
         if keys_col_name is not None and values_col_name is not None:
             return dict_to_frame(d, keys_col_name, values_col_name)
         else:
@@ -221,12 +256,15 @@ def position(df, unique_channels, path_col='path', conv_col='conversion', sep='^
     In position based model 30% of conversions are attributed to the first and last touchpoints
     and 40% are evenly attributed to other
 
-    :param
-    - df (pd.DataFrame) : dataframe with all data, if prep_data was used then it is "full_gr" dataframe
-    - unique_channels (iterable) : list(or other iterable) of channels in paths
-    - path_col (str, default = 'path') : name of column with path data
-    - conv_col (str, default = 'conversion') : name of column with conversion data
-    - plot (bool, default = True) : whether to plot the data. Plot will contain normalized data
+    :param df: (pd.DataFrame) dataframe with all data, if prep_data was used then it is "full_gr" dataframe
+    :param unique_channels: (iterable) list(or other iterable) of channels in paths
+    :param path_col: (str, default = 'path') name of column with path data
+    :param conv_col: (str, default = 'conversion') name of column with conversion data
+    :param plot: (bool, default = True) whether to plot the data. Plot will contain normalized data
+    :param as_frame: (bool, optional, default=False) whether to return data as pandas.DataFrame
+    :param keys_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param values_col_name: (str, optional, default=None) must be specified if as_frame is set to True
+    :param sep: (str, optional default='^'), channel separator used in paths
 
     :returns
     - dictionary with channels an their attribution score (not-normalized)
@@ -248,14 +286,14 @@ def position(df, unique_channels, path_col='path', conv_col='conversion', sep='^
             else:
                 d[cur_path[pos]] += int((conversions * 0.4) / (L-2))
 
-    if plot == True:
+    if plot:
             d_ = {k: v/sum(d.values()) for k, v in zip(d.keys(), d.values())}
             fig = px.bar(y=d_.keys(), x=d_.values(), title='Position based model', orientation='h')
             fig.update_xaxes(title_text='Доля от всех конверсий')
             fig.update_yaxes(title_text='Группа каналов')
             fig.show()
 
-    if as_frame == True:
+    if as_frame:
         if keys_col_name is not None and values_col_name is not None:
             return dict_to_frame(d, keys_col_name, values_col_name)
         else:

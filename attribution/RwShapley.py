@@ -1,13 +1,12 @@
-from itertools import permutations, combinations, product
+from itertools import combinations, product
 import numpy as np
 from collections import defaultdict
 import pandas as pd
 from tools.exceptions import MissInputData
 from tqdm import tqdm
-import plotly.express as px
 
 
-class RwShap():
+class RwShap:
     def __init__(self, df, channel_col_name, conv_col_name, sep="^"):
         self.df = df
         self.channel_col_name = channel_col_name
@@ -15,28 +14,30 @@ class RwShap():
         self.sep = sep
 
 
-    # Считаем все возможные комбинации БЕЗ ПОВТОРОВ
     @staticmethod
     def comb(l, max_path_len):
+        """
+        Computes combinations without repetitions for elements in set
+        :param l: (iterable) - Initial set
+        :param max_path_len: (int) - Maximum cardinality of subset with combinations
+
+        :return: list with combinations
+        """
         res = [list(j) for i in range(max_path_len) for j in combinations(l, i+1)]
         return res
 
 
-    # Считаем все возможные комбинации С ПОВТОРАМИ
     @staticmethod
     def comb_full(vals, max_len=None):
-
         """
         Finds ALL possible combinations of set with repetitions with the specified length
 
         **NOTE** Be careful with large sets and max length, because number of possible combinations is n^max_len
 
-        Inputs:
-        - vals (iterable) - unique set of values for combinations
-        - max_len (int) - maximum length of combination
+        :param vals: (iterable), Unique set of values for combinations
+        :param max_len: (int), Maximum length of combination
 
-
-        Outputs: list with all possible combinations
+        :return: list with all possible combinations
         """
 
         res = []
@@ -47,8 +48,13 @@ class RwShap():
         return res
 
 
-    # Все возможные подмножества
     def subs(self, s, with_repetitions):
+        """
+        Finds ALL subsets of set s
+        :param s: (iterable), Initial set
+        :param with_repetitions: (bool), Whether subsets can contain repeating values
+        :return: list with subsets
+        """
         if len(s) == 1:
             return s
         else:
@@ -62,15 +68,14 @@ class RwShap():
         return list(map(self.sep.join, map(sorted, sub_channels)))
 
 
-    # Вклад
     def impact(self, A, C_values, with_repetitions):
-        '''
+        """
         Computes impact of coalition (channel combination)
 
-        Input:
-        - A (iterable) : coalition of channels.
-        - C_values (dictionary): containins the number of conversions that each subset of channels has given
-        '''
+        :param A: (iterable), Coalition of channels.
+        :param C_values: (dictionary), Contains the number of conversions that each subset of channels has given
+        """
+
         subsets_of_A = self.subs(A, with_repetitions=with_repetitions)
         worth_of_A = 0
         for subset in subsets_of_A:
@@ -79,33 +84,25 @@ class RwShap():
         return worth_of_A
 
 
-    # Считаем вектор Шэпли
-    def shapley_value(self, max_path_len=1, with_repetitions=True, channels=None, plot=True):
+    def shapley_value(self, max_path_len=1, with_repetitions=True, channels=None):
 
-        # TODO: change docstring
-        '''
-        Calculates shapley values:
-        Input:
-        - df (pandas.DataFrame): A dataframe with the two columns: channels(path) and conversion amnt
+        """
+        Computes Shapley values
+        ***NOTE*** The growth of combinations is exponential 2^(n),
+        so it'll work too slow for large amnts of combinations
 
-        - col_name: A string that is the name of the column with conversions
-                ***NOTE*** Channels should be sorted alphabetically. In this analysis path "Google, Email" is the same as "Email, Google"
-                Thus they should be combined in "Google, Email"
-
-                ***NOTE*** The growth of combinations is exponential 2^(n), so it'll work too slow for large amnts of combinations
-        '''
+        :param max_path_len: - maximum length of considered path, can not be greater than number of unique_channels
+        :param with_repetitions: (bool), Whether subsets can contain repeating values
+        :param channels: (iterable), Set of all channels in paths. If not provided will be found from
+        self.df[self.channel_col_name]
+        """
 
         df = self.df
 
         c_values = df.set_index(self.channel_col_name).to_dict()[self.conv_col_name]
-        # Test feature
-        # if fic is not None:
-        #     for k, conv in c_values.items():
-        #         path = k.split(self.sep)
-        #         for k_, w in fic.items():
 
         if channels is None:
-            df['channels'] = df[self.channel_col_name].apply(lambda x: x if len(x.split(self.sep)) == 1 else np.nan)
+            df[self.channel_col_name] = df[self.channel_col_name].apply(lambda x: x if len(x.split(self.sep)) == 1 else np.nan)
 
         if with_repetitions:
             # Максимальная длина цепочки должна быть < число каналов
@@ -121,7 +118,6 @@ class RwShap():
         else:
             for A in self.comb(channels, max_path_len):
                 v_values[self.sep.join(sorted(A))] = self.impact(A, c_values, with_repetitions)
-
 
         n = len(channels)
         shapley_values = defaultdict(int)
@@ -167,20 +163,14 @@ def shap_and_freq(FIC_data, FIC_on, shap_on, sh_clicks=None, sh_impr=None, sh_to
 
     :param FIC_data: (pandas.DataFrame or tuple of pandas.DataFrames), result of tools.prep.compute_FIC, dataframe with
      FIC for each channel for clicks and impressions or for all interaction types
-
     :param FIC_on: (str), name of column in FIC DataFrame to merge with shapley data
-
     :param shap_on: (str), name of column in sh_data DataFrame to merge with shapley data
-
     :param sh_clicks: (pd.DataFrame, optional, default=None), if FIC_data is tuple with FIC for both impressions and
     clicks data, must be not None, result of tools.prep.compute_FIC for ONLY "Click" interactions
-
     :param sh_impr: (pd.DataFrame, optional, default=None), if FIC_data is tuple with FIC for both impressions and click
     data, must be not None, result of tools.prep.compute_FIC for ONLY "Impression" interactions
-
     :param sh_total: (pd.DataFrame, optional, default=None), if FIC_data is pd.DataFrame with FIC for total data,
     must be not None
-
 
     :return:
     """
@@ -233,13 +223,3 @@ def shap_and_freq(FIC_data, FIC_on, shap_on, sh_clicks=None, sh_impr=None, sh_to
         total['total_weight'] = total['weight'] * total['FIC']
         total['total_weight'] = total['total_weight'] / total['total_weight'].sum()
         return total[[shap_on, 'total_weight']]
-
-
-
-
-
-
-
-
-
-

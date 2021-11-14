@@ -1,10 +1,23 @@
 import plotly.graph_objs as go
 from plotly.io import write_html
-from tools.exceptions import MissInputData
 
 
-def compare(attributions, channel_col, weight_col, names=None, orientation=None, width=None, height=None,
-            to_html=False, path=None):
+def compare(attributions, channel_col, weight_col, names=None, orientation=None, width=None, height=None, path=None):
+    """
+    Plots results of different attribution models for comparison
+
+    :param attributions: (iterable) - Iterable with pandas.DataFrames with attribution results
+    :param channel_col: (str) - Name of column (must be the same in all attribution results dataframes) with channels
+    :param weight_col: (str) - Name of column (must be the same in all attribution results dataframes) with channel
+    weights
+    :param names: (iterable, optional default=None) - Iterable with names of attributions. If None, plots will be
+    untitled
+    :param orientation: (str, optional default=None) - Orientation to plot data: "h" or "v"
+    :param width: (int, optional default=None) - With of plot in pixels. If None will be set to default value 900
+    :param height: (int, optional default=None) - Height of plot in pixels. If None will be set to default value 900
+    :param path: (str, optional default=None) - Path to export plot as html. If None plot won't be exported
+
+    """
 
     names = [i for i in range(len(attributions))] if names is None else names
     orientation = 'h' if orientation is None else orientation
@@ -26,11 +39,7 @@ def compare(attributions, channel_col, weight_col, names=None, orientation=None,
 
     fig.show()
 
-    if to_html:
-        if path is not None:
-            write_html(fig, path)
-        else:
-            print('Please pass path where to save htm file')
-            raise MissInputData
-    return
+    if path is not None:
+        write_html(fig, path)
 
+    return

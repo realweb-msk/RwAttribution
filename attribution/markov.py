@@ -184,7 +184,6 @@ class RwMarkov:
 
 
     def prob(self, trans_dict):
-
         """
         Computes probabilities of transitions between ALL possible states.
 
@@ -303,7 +302,6 @@ class RwMarkov:
             print("removal_effect is done")
         return removal_effect_dict
 
-
     def make_markov(self):
         """Final method to make markov-chain attribution model"""
 
@@ -324,8 +322,3 @@ class RwMarkov:
 
         removal_sum = sum(removal.values())
         return {k: (v / removal_sum) for k, v in removal.items()}
-
-
-
-
-
